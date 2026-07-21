@@ -1,23 +1,28 @@
 """
-Собирает статистику из Alanbase API + расходы из Google Sheets,
-считает метрики по группам (partners/seo/inhouse/cc/inactive)
-и сохраняет docs/data/latest.json + docs/data/history.json.
+Собирает статистику из Alanbase API (по partner_id и offer_id)
++ читает три вкладки Google Sheets:
+  - "Партнёры"            — какой partner_id в какой группе (обычные)
+  - "Партнёры_по_офферам" — для "составных" партнёров, у которых разные
+                            офферы относятся к разным группам
+  - "Расходы"              — Spend по неделям, по partner_id (и offer_id
+                             для составных партнёров)
 
-Запускается автоматически по расписанию через GitHub Actions
-(.github/workflows/collect.yml), либо вручную:
-    python scripts/collect.py
+Сохраняет docs/data/latest.json + docs/data/history.json.
+Запускается через .github/workflows/collect.yml по расписанию,
+либо вручную: python scripts/collect.py
 """
 
 import os
 import json
 import csv
 import io
+import re
 import datetime
 import urllib.request
 import urllib.parse
 
 # ---------------------------------------------------------------
-# НАСТРОЙКИ — правь здесь, если что-то поменяется на стороне Alanbase / таблицы
+# НАСТРОЙКИ
 # ---------------------------------------------------------------
 
 BASE_URL = "https://lofto.api.alanbase.com/v1"
@@ -27,21 +32,115 @@ SHEET_ID = os.environ["SHEET_ID"]
 TIMEZONE = "Asia/Almaty"
 CURRENCY = "USD"
 
-# Какие теги Alanbase относятся к какой группе дашборда.
-# Если появится новый тег, которого нет в этом словаре — он попадёт
-# в лог как "неизвестный тег", просто допиши его сюда.
-TAG_TO_GROUP = {
-    "рся": "partners",
-    "fb": "partners",
-    "сео": "seo",
-    "inhouse": "inhouse",
-    "cc": "cc",
-    "неактивный": "inactive",
-}
+# gid каждой вкладки — если пересоздашь вкладку, gid поменяется,
+# тогда поправь тут
+GID_PARTNERS = "172795040"
+GID_SPEND = "1069978200"
+GID_PARTNER_OFFERS = "89777085"
+
 GROUPS = ["partners", "seo", "inhouse", "cc", "inactive"]
+
+# нормализация написания групп: разные варианты записи -> канонический ключ
+GROUP_ALIASES = {
+    "partners": "partners", "партнеры": "partners", "партнёры": "partners",
+    "seo": "seo", "сео": "seo",
+    "inhouse": "inhouse", "инхаус": "inhouse",
+    "cc": "cc", "ccбаннеры": "cc", "баннеры": "cc", "банеры": "cc", "ccbanners": "cc",
+    "inactive": "inactive", "неактив": "inactive", "неактивный": "inactive", "неактивные": "inactive",
+}
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "data")
 HISTORY_MAX_POINTS = 60
+
+
+def normalize_group(raw):
+    if not raw:
+        return None
+    key = raw.strip().lower().replace("ё", "е").replace("/", "").replace(" ", "")
+    return GROUP_ALIASES.get(key)
+
+
+# ---------------------------------------------------------------
+# ЧТЕНИЕ ТАБЛИЦЫ (три вкладки, каждая по своему gid)
+# ---------------------------------------------------------------
+
+def read_sheet_tab(gid):
+    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={gid}"
+    with urllib.request.urlopen(url, timeout=30) as resp:
+        raw = resp.read().decode("utf-8", errors="ignore")
+    rows = list(csv.reader(io.StringIO(raw)))
+    if not rows:
+        return []
+    header = [h.strip().lower() for h in rows[0]]
+    result = []
+    for row in rows[1:]:
+        if not any(c.strip() for c in row):
+            continue
+        entry = {}
+        for i, col in enumerate(header):
+            entry[col] = row[i].strip() if i < len(row) else ""
+        result.append(entry)
+    return result
+
+
+def load_partner_groups():
+    """Вкладка 'Партнёры': {partner_id: group}. Пропускает нераспознанные группы."""
+    mapping = {}
+    for row in read_sheet_tab(GID_PARTNERS):
+        pid = row.get("partner_id", "")
+        if not pid:
+            continue
+        group = normalize_group(row.get("группа", ""))
+        if group is None:
+            print(f"[warn] partner_id {pid}: неизвестная группа '{row.get('группа')}' — пропущен")
+            continue
+        mapping[pid] = group
+    return mapping
+
+
+def load_partner_offer_overrides():
+    """Вкладка 'Партнёры_по_офферам': {(partner_id, offer_id): group} + set составных partner_id."""
+    mapping = {}
+    override_partner_ids = set()
+    for row in read_sheet_tab(GID_PARTNER_OFFERS):
+        pid = row.get("partner_id", "")
+        oid = row.get("offer_id", "")
+        if not pid or not oid:
+            continue
+        group = normalize_group(row.get("группа", ""))
+        if group is None:
+            print(f"[warn] partner_id {pid} offer_id {oid}: неизвестная группа '{row.get('группа')}' — пропущен")
+            continue
+        mapping[(pid, oid)] = group
+        override_partner_ids.add(pid)
+    return mapping, override_partner_ids
+
+
+def load_spend_rows():
+    """Вкладка 'Расходы' — список строк с датами периода, partner_id, offer_id (может быть пустым), spend."""
+    rows = []
+    for row in read_sheet_tab(GID_SPEND):
+        pid = row.get("partner_id", "")
+        if not pid:
+            continue
+        period_from = row.get("период_с", "")
+        period_to = row.get("период_по", "")
+        if not period_from or not period_to:
+            print(f"[warn] Расходы: у partner_id {pid} (offer {row.get('offer_id','—')}) нет дат периода — строка пропущена")
+            continue
+        raw_spend = (row.get("spend", "") or "0").replace("$", "").replace(",", "").strip()
+        try:
+            spend = float(raw_spend) if raw_spend else 0.0
+        except ValueError:
+            spend = 0.0
+        rows.append({
+            "period_from": period_from,
+            "period_to": period_to,
+            "partner_id": pid,
+            "offer_id": row.get("offer_id", "").strip(),
+            "spend": spend,
+        })
+    return rows
 
 
 # ---------------------------------------------------------------
@@ -49,7 +148,6 @@ HISTORY_MAX_POINTS = 60
 # ---------------------------------------------------------------
 
 def api_get(path, params):
-    """GET-запрос к Alanbase со всеми страницами результата."""
     all_rows = []
     page = 1
     while True:
@@ -73,10 +171,10 @@ def api_get(path, params):
     return all_rows
 
 
-def fetch_goal_by_tag(goal_key, date_from, date_to):
-    """Возвращает {tag: {"count": int, "value": float}} для одной цели (goal)."""
+def fetch_by_partner(goal_key, date_from, date_to):
+    """group_by=partner — для обычных партнёров. Возвращает {partner_id: {count, value}}."""
     rows = api_get("/admin/statistic/common", {
-        "group_by": "tags",
+        "group_by": "partner",
         "timezone": TIMEZONE,
         "date_from": date_from,
         "date_to": date_to,
@@ -86,9 +184,32 @@ def fetch_goal_by_tag(goal_key, date_from, date_to):
     result = {}
     for row in rows:
         fields = row.get("group_fields", [])
-        tag = fields[0]["label"] if fields else "unknown"
+        pid = str(fields[0]["id"]) if fields else "unknown"
         total = row.get("conversions", {}).get("total", {})
-        result[tag] = {
+        result[pid] = {
+            "count": total.get("count", 0),
+            "value": total.get("value", 0) or total.get("revenue", 0) or 0,
+        }
+    return result
+
+
+def fetch_by_offer_for_partner(goal_key, partner_id, date_from, date_to):
+    """group_by=offer, отфильтровано по одному partner_id — для составных партнёров."""
+    rows = api_get("/admin/statistic/common", {
+        "group_by": "offer",
+        "timezone": TIMEZONE,
+        "date_from": date_from,
+        "date_to": date_to,
+        "currency_code": CURRENCY,
+        "goal_keys[]": [goal_key],
+        "partner_ids[]": [partner_id],
+    })
+    result = {}
+    for row in rows:
+        fields = row.get("group_fields", [])
+        oid = str(fields[0]["id"]) if fields else "unknown"
+        total = row.get("conversions", {}).get("total", {})
+        result[oid] = {
             "count": total.get("count", 0),
             "value": total.get("value", 0) or total.get("revenue", 0) or 0,
         }
@@ -96,102 +217,67 @@ def fetch_goal_by_tag(goal_key, date_from, date_to):
 
 
 # ---------------------------------------------------------------
-# GOOGLE SHEETS (расходы) — читаем публичный CSV-экспорт, без OAuth
+# СБОРКА МЕТРИК ЗА ПЕРИОД
 # ---------------------------------------------------------------
 
-def read_spend_by_tag():
-    """
-    Пытается найти в таблице колонку с тегом и колонку с расходом
-    и вернуть {tag: spend}. Если структура таблицы не совпала —
-    возвращает {} и печатает предупреждение, остальной сбор не ломается.
-    """
-    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
-    try:
-        with urllib.request.urlopen(url, timeout=30) as resp:
-            raw = resp.read().decode("utf-8", errors="ignore")
-    except Exception as e:
-        print(f"[warn] не смог скачать Google Sheet: {e}")
-        return {}
+def build_metric_aggregates(date_from, date_to, partner_groups, overrides, override_partner_ids):
+    aggregates = {g: {"registrations": 0, "ftd": 0, "ggr": 0.0} for g in GROUPS}
 
-    reader = list(csv.reader(io.StringIO(raw)))
-    if not reader:
-        return {}
+    # обычные партнёры — одним запросом на всех
+    for goal, field in [("registration", "registrations"), ("ftd", "ftd"), ("ggr", "ggr")]:
+        by_partner = fetch_by_partner(goal, date_from, date_to)
+        for pid, data in by_partner.items():
+            if pid in override_partner_ids:
+                continue  # у составных партнёров считаем по офферам ниже
+            group = partner_groups.get(pid)
+            if not group:
+                continue  # partner_id не найден в справочнике "Партнёры" — пропускаем
+            value = data["value"] if field == "ggr" else data["count"]
+            aggregates[group][field] += value
 
-    header = [h.strip().lower() for h in reader[0]]
+    # составные партнёры — по офферам, отдельным запросом на каждого
+    for pid in override_partner_ids:
+        for goal, field in [("registration", "registrations"), ("ftd", "ftd"), ("ggr", "ggr")]:
+            by_offer = fetch_by_offer_for_partner(goal, pid, date_from, date_to)
+            for oid, data in by_offer.items():
+                group = overrides.get((pid, oid))
+                if not group:
+                    print(f"[info] partner_id {pid} offer_id {oid}: нет в 'Партнёры_по_офферам' — пропущен")
+                    continue
+                value = data["value"] if field == "ggr" else data["count"]
+                aggregates[group][field] += value
 
-    def find_col(*candidates):
-        for i, h in enumerate(header):
-            if any(c in h for c in candidates):
-                return i
-        return None
+    for g in aggregates:
+        aggregates[g]["ggr"] = round(aggregates[g]["ggr"], 2)
+    return aggregates
 
-    tag_col = find_col("тег", "tag")
-    spend_col = find_col("spend", "расход", "затрат")
 
-    if tag_col is None or spend_col is None:
-        print("[warn] не нашёл колонки тег/расход в таблице — проверь заголовки")
-        return {}
-
-    spend_by_tag = {}
-    for row in reader[1:]:
-        if len(row) <= max(tag_col, spend_col):
+def spend_for_period(spend_rows, date_from, date_to, partner_groups, overrides):
+    """Ищет в Расходы строки, чей период ТОЧНО совпадает с запрошенной неделей."""
+    want_from = date_from.split(" ")[0]
+    want_to = date_to.split(" ")[0]
+    aggregates = {g: 0.0 for g in GROUPS}
+    matched_any = False
+    for row in spend_rows:
+        if row["period_from"] != want_from or row["period_to"] != want_to:
             continue
-        tag = row[tag_col].strip().lower()
-        raw_val = row[spend_col].replace("$", "").replace(",", "").strip()
-        if not tag or not raw_val:
-            continue
-        try:
-            spend_by_tag[tag] = spend_by_tag.get(tag, 0) + float(raw_val)
-        except ValueError:
-            continue
-    return spend_by_tag
-
-
-# ---------------------------------------------------------------
-# СБОРКА СНИМКА ЗА ПЕРИОД
-# ---------------------------------------------------------------
-
-def build_group_aggregates(date_from, date_to):
-    reg_by_tag = fetch_goal_by_tag("registration", date_from, date_to)
-    ftd_by_tag = fetch_goal_by_tag("ftd", date_from, date_to)
-    ggr_by_tag = fetch_goal_by_tag("ggr", date_from, date_to)
-    spend_by_tag = read_spend_by_tag()
-
-    all_tags = set(reg_by_tag) | set(ftd_by_tag) | set(ggr_by_tag)
-    for tag in all_tags:
-        if tag.lower() not in TAG_TO_GROUP and tag not in TAG_TO_GROUP:
-            print(f"[info] неизвестный тег из Alanbase: '{tag}' — допиши в TAG_TO_GROUP, если нужно")
-
-    aggregates = {g: {"registrations": 0, "ftd": 0, "ggr": 0.0, "spend": 0.0} for g in GROUPS}
-
-    for tag in all_tags:
-        group = TAG_TO_GROUP.get(tag) or TAG_TO_GROUP.get(tag.lower())
+        matched_any = True
+        pid, oid = row["partner_id"], row["offer_id"]
+        if oid:
+            group = overrides.get((pid, oid))
+        else:
+            group = partner_groups.get(pid)
         if not group:
             continue
-        aggregates[group]["registrations"] += reg_by_tag.get(tag, {}).get("count", 0)
-        aggregates[group]["ftd"] += ftd_by_tag.get(tag, {}).get("count", 0)
-        aggregates[group]["ggr"] += ggr_by_tag.get(tag, {}).get("value", 0)
-        aggregates[group]["spend"] += spend_by_tag.get(tag.lower(), 0)
-
-    # NGR — точную формулу считает Alanbase во вкладке "Формулы".
-    # Пока берём приблизительно 60% от GGR — поправь коэффициент,
-    # когда сверишь с реальным отчётом.
-    for g in aggregates:
-        aggregates[g]["ngr"] = round(aggregates[g]["ggr"] * 0.6, 2)
-        aggregates[g]["ggr"] = round(aggregates[g]["ggr"], 2)
-        aggregates[g]["spend"] = round(aggregates[g]["spend"], 2)
-
-    return aggregates
+        aggregates[group] += row["spend"]
+    return {g: round(v, 2) for g, v in aggregates.items()}, matched_any
 
 
 def week_bounds(weeks_ago=0):
     today = datetime.date.today()
     monday = today - datetime.timedelta(days=today.weekday() + 7 * weeks_ago)
     end = monday + datetime.timedelta(days=6) if weeks_ago > 0 else today
-    return (
-        monday.strftime("%Y-%m-%d 00:00"),
-        end.strftime("%Y-%m-%d 23:59"),
-    )
+    return monday.strftime("%Y-%m-%d 00:00"), end.strftime("%Y-%m-%d 23:59")
 
 
 def main():
@@ -199,20 +285,41 @@ def main():
 
     cur_from, cur_to = week_bounds(0)
     prev_from, prev_to = week_bounds(1)
-
     print(f"Текущая неделя: {cur_from} .. {cur_to}")
     print(f"Прошлая неделя: {prev_from} .. {prev_to}")
 
-    current = build_group_aggregates(cur_from, cur_to)
-    previous = build_group_aggregates(prev_from, prev_to)
+    partner_groups = load_partner_groups()
+    overrides, override_partner_ids = load_partner_offer_overrides()
+    spend_rows = load_spend_rows()
+    print(f"Загружено: {len(partner_groups)} партнёров, {len(overrides)} офферов-исключений, {len(spend_rows)} строк расходов")
+
+    current_metrics = build_metric_aggregates(cur_from, cur_to, partner_groups, overrides, override_partner_ids)
+    previous_metrics = build_metric_aggregates(prev_from, prev_to, partner_groups, overrides, override_partner_ids)
+
+    current_spend, cur_spend_matched = spend_for_period(spend_rows, cur_from, cur_to, partner_groups, overrides)
+    previous_spend, prev_spend_matched = spend_for_period(spend_rows, prev_from, prev_to, partner_groups, overrides)
+
+    if not cur_spend_matched:
+        print(f"[warn] в 'Расходы' нет строк с периодом {cur_from.split(' ')[0]}..{cur_to.split(' ')[0]} — Spend за эту неделю будет 0")
+
+    latest_groups = {}
+    for g in GROUPS:
+        cur = dict(current_metrics[g])
+        cur["spend"] = current_spend.get(g, 0.0)
+        cur["ngr"] = round(cur["ggr"] * 0.6, 2)  # приближение, см. README
+
+        prev = dict(previous_metrics[g])
+        prev["spend"] = previous_spend.get(g, 0.0) if prev_spend_matched else None
+        prev["ngr"] = round(prev["ggr"] * 0.6, 2)
+
+        latest_groups[g] = {"current": cur, "previous": prev}
 
     latest = {
         "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
         "period": {"from": cur_from, "to": cur_to},
         "previous_period": {"from": prev_from, "to": prev_to},
-        "groups": {
-            g: {"current": current[g], "previous": previous[g]} for g in GROUPS
-        },
+        "groups": latest_groups,
+        "spend_stale_warnings": {},
     }
 
     with open(os.path.join(DATA_DIR, "latest.json"), "w", encoding="utf-8") as f:
@@ -231,9 +338,10 @@ def main():
         points = [p for p in history[g] if p["date"] != today_str]
         points.append({
             "date": today_str,
-            "registrations": current[g]["registrations"],
-            "ftd": current[g]["ftd"],
-            "ggr": current[g]["ggr"],
+            "registrations": current_metrics[g]["registrations"],
+            "ftd": current_metrics[g]["ftd"],
+            "ggr": current_metrics[g]["ggr"],
+            "spend": current_spend.get(g, 0.0),
         })
         history[g] = points[-HISTORY_MAX_POINTS:]
 
