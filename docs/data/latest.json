@@ -1,0 +1,93 @@
+{
+  "generated_at": "2026-07-21T15:56:19.668828Z",
+  "period": {
+    "from": "2026-07-20 00:00",
+    "to": "2026-07-21 23:59"
+  },
+  "previous_period": {
+    "from": "2026-07-13 00:00",
+    "to": "2026-07-19 23:59"
+  },
+  "groups": {
+    "partners": {
+      "current": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      },
+      "previous": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      }
+    },
+    "seo": {
+      "current": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      },
+      "previous": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      }
+    },
+    "inhouse": {
+      "current": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      },
+      "previous": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      }
+    },
+    "cc": {
+      "current": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      },
+      "previous": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      }
+    },
+    "inactive": {
+      "current": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      },
+      "previous": {
+        "registrations": 0,
+        "ftd": 0,
+        "ggr": 0.0,
+        "spend": 0.0,
+        "ngr": 0.0
+      }
+    }
+  }
+}
