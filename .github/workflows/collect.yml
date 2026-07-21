@@ -1,0 +1,35 @@
+name: Собрать статистику
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run collector
+        env:
+          ALANBASE_API_KEY: ${{ secrets.ALANBASE_API_KEY }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: python scripts/collect.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name "affiliate-dashboard-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/data/latest.json docs/data/history.json
+          git diff --cached --quiet || git commit -m "data: обновление статистики $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
