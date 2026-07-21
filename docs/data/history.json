@@ -2,41 +2,46 @@
   "partners": [
     {
       "date": "2026-07-21",
-      "registrations": 0,
-      "ftd": 0,
-      "ggr": 0.0
+      "registrations": 46572,
+      "ftd": 46572,
+      "ggr": 181890.58,
+      "spend": 0.0
     }
   ],
   "seo": [
     {
       "date": "2026-07-21",
-      "registrations": 0,
-      "ftd": 0,
-      "ggr": 0.0
+      "registrations": 65443,
+      "ftd": 65443,
+      "ggr": 328597.17,
+      "spend": 0.0
     }
   ],
   "inhouse": [
     {
       "date": "2026-07-21",
-      "registrations": 0,
-      "ftd": 0,
-      "ggr": 0.0
+      "registrations": 8180,
+      "ftd": 8180,
+      "ggr": 9975.52,
+      "spend": 0.0
     }
   ],
   "cc": [
     {
       "date": "2026-07-21",
-      "registrations": 0,
-      "ftd": 0,
-      "ggr": 0.0
+      "registrations": 181,
+      "ftd": 181,
+      "ggr": 66.12,
+      "spend": 0.0
     }
   ],
   "inactive": [
     {
       "date": "2026-07-21",
-      "registrations": 0,
-      "ftd": 0,
-      "ggr": 0.0
+      "registrations": 5158,
+      "ftd": 5158,
+      "ggr": 16092.42,
+      "spend": 0.0
     }
   ]
 }
