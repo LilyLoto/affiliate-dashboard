@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Affiliate Ledger — прототип дашборда</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EEF1EE;
+    --surface:#FFFFFF;
+    --ink:#121B17;
+    --ink-muted:#5C6B64;
+    --ink-faint:#93A099;
+    --line:#D9DED8;
+    --accent:#1F6F5C;
+    --accent-soft:#DCEAE3;
+    --danger:#B3432B;
+    --danger-soft:#F5E1DA;
+    --amber:#A9791C;
+    --amber-soft:#F3E7CE;
+    --radius:6px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Space Grotesk', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .num, table td.num, .kpi-value, .delta, th.num-h{
+    font-family:'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing:-0.02em;
+  }
+  a{color:var(--accent);}
+
+  .shell{max-width:1180px; margin:0 auto; padding:28px 24px 60px;}
+
+  .topbar{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    padding-bottom:18px; margin-bottom:22px; border-bottom:2px solid var(--ink);
+  }
+  .topbar h1{font-size:20px; font-weight:700; margin:0; letter-spacing:-0.01em;}
+  .topbar .sub{font-size:12px; color:var(--ink-muted); margin-top:4px; font-family:'IBM Plex Mono', monospace;}
+  .topbar .meta{text-align:right; font-size:12px; color:var(--ink-muted); font-family:'IBM Plex Mono', monospace;}
+  .topbar .meta b{color:var(--ink); font-weight:600;}
+
+  .controls{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;}
+  .seg{display:inline-flex; border:1px solid var(--ink); border-radius:var(--radius); overflow:hidden;}
+  .seg button{
+    border:none; background:var(--surface); color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;
+    font-size:12px; padding:8px 16px; cursor:pointer; border-right:1px solid var(--ink);
+  }
+  .seg button:last-child{border-right:none;}
+  .seg button.active{background:var(--ink); color:var(--surface);}
+
+  .tabs{display:flex; gap:2px; flex-wrap:wrap;}
+  .tabs button{
+    border:none; background:transparent; color:var(--ink-muted); font-family:'Space Grotesk',sans-serif;
+    font-weight:500; font-size:13px; padding:9px 14px; cursor:pointer; border-radius:var(--radius);
+    border-bottom:2px solid transparent;
+  }
+  .tabs button.active{color:var(--ink); border-bottom:2px solid var(--accent); background:var(--accent-soft);}
+  .tabs button .count{color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; font-size:11px; margin-left:4px;}
+
+  .kpi-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:1px; background:var(--line); border:1px solid var(--line); margin-bottom:26px;}
+  .kpi{background:var(--surface); padding:14px 16px; border-left:3px solid var(--ink-faint);}
+  .kpi.up{border-left-color:var(--accent);}
+  .kpi.down{border-left-color:var(--danger);}
+  .kpi-label{font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.04em; margin:0 0 8px;}
+  .kpi-value{font-size:22px; font-weight:600; margin:0; color:var(--ink);}
+  .delta{font-size:11px; margin-top:6px; display:flex; align-items:center; gap:4px;}
+  .delta.up{color:var(--accent);}
+  .delta.down{color:var(--danger);}
+  .delta .prev{color:var(--ink-faint); font-size:10px;}
+
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); margin-bottom:20px;}
+  .panel-head{display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line);}
+  .panel-head h2{font-size:13px; font-weight:600; margin:0; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-muted);}
+  .legend{display:flex; gap:14px; font-size:11px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;}
+  .legend span{display:flex; align-items:center; gap:5px;}
+  .dot{width:8px; height:8px; border-radius:2px; display:inline-block;}
+
+  .chart-wrap{padding:14px 16px 8px; height:220px; position:relative;}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{
+    text-align:left; padding:9px 14px; font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em;
+    color:var(--ink-muted); font-weight:600; border-bottom:1px solid var(--ink); font-family:'Space Grotesk',sans-serif;
+  }
+  thead th.num-h{text-align:right;}
+  tbody td{padding:9px 14px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tbody td.num{text-align:right;}
+  tbody tr.partner-row{cursor:pointer;}
+  tbody tr.partner-row:hover{background:#F7F9F7;}
+  tbody tr.offer-row td{background:#FAFBF9; color:var(--ink-muted); font-size:12px;}
+  tbody tr.offer-row td:first-child{padding-left:34px;}
+  .caret{display:inline-block; width:14px; color:var(--ink-faint); font-size:11px; transition:transform .15s;}
+  .caret.open{transform:rotate(90deg); color:var(--ink);}
+  .tag{
+    display:inline-block; font-size:10.5px; font-family:'IBM Plex Mono',monospace; padding:2px 7px;
+    border-radius:4px; background:var(--accent-soft); color:var(--accent); font-weight:500;
+  }
+  .tag.warn{background:var(--amber-soft); color:var(--amber);}
+  .tag.muted{background:var(--line); color:var(--ink-muted);}
+  .muted-cell{color:var(--ink-faint);}
+  .foot-note{font-size:11.5px; color:var(--ink-muted); padding:12px 16px; border-top:1px solid var(--line); font-family:'IBM Plex Mono',monospace;}
+  .foot-note a{color:var(--accent); text-decoration:none;}
+  .empty-note{padding:16px; font-size:12.5px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;}
+
+  @media (max-width:900px){
+    .kpi-grid{grid-template-columns:repeat(3,1fr);}
+  }
+  @media (max-width:560px){
+    .kpi-grid{grid-template-columns:repeat(2,1fr);}
+    .topbar{flex-direction:column; align-items:flex-start; gap:8px;}
+    .topbar .meta{text-align:left;}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div>
+      <h1>Affiliate Ledger</h1>
+      <div class="sub">источники: Alanbase API · Google Sheets (Spend)</div>
+    </div>
+    <div class="meta">Обновлено <b id="updatedAt">21.07 · 09:14</b><br>Прототип · данные условные</div>
+  </div>
+
+  <div class="controls">
+    <div class="seg" id="periodSeg">
+      <button data-period="week" class="active">Неделя</button>
+      <button data-period="month">Месяц</button>
+    </div>
+    <div class="tabs" id="groupTabs"></div>
+  </div>
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div class="panel" id="chartPanel">
+    <div class="panel-head">
+      <h2 id="chartTitle">Динамика — партнёры</h2>
+      <div class="legend">
+        <span><span class="dot" style="background:#1F6F5C"></span>Registrations</span>
+        <span><span class="dot" style="background:#A9791C"></span>FTD</span>
+        <span><span class="dot" style="background:#5B6BB0"></span>GGR (/100, $)</span>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="historyChart" role="img" aria-label="Линейный график динамики Registrations, FTD и GGR по периодам"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2 id="tableTitle">Партнёры</h2>
+      <span class="sub" id="tableHint" style="font-size:11px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;"></span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="dataTable"></table>
+    </div>
+    <div class="foot-note">Spend подтягивается из <a href="#" onclick="return false;">Google Sheets</a> и сопоставляется по тегу/офферу. CPA рассчитывается автоматически: CPA REG = Spend / Registrations, CPA FTD = Spend / FTD.</div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ---------------------------------------------------------------
+   ЖИВЫЕ ДАННЫЕ
+   Читаем ./data/latest.json (снимок текущей и прошлой недели по группам)
+   и ./data/history.json (накопленная история по дням запуска сборщика).
+   Оба файла обновляет scripts/collect.py по расписанию GitHub Actions.
+------------------------------------------------------------------*/
+
+const GROUP_META = {
+  partners: { title:'Партнёры', hasDashboard:true },
+  seo:      { title:'СЕО',       hasDashboard:true },
+  inhouse:  { title:'Инхаус',    hasDashboard:true },
+  cc:       { title:'CC / Баннеры', hasDashboard:true },
+  inactive: { title:'Неактивные', hasDashboard:false },
+};
+
+let LATEST = null;
+let HISTORY = null;
+let state = { group:'partners' };
+let chartRef = null;
+
+function fmtInt(n){ return Math.round(n||0).toLocaleString('ru-RU'); }
+function fmtMoney(n){ return '$'+Math.round(n||0).toLocaleString('ru-RU'); }
+function fmtPct(n){ return (n||0).toFixed(1)+'%'; }
+
+function delta(cur, prev){
+  if(prev === undefined || prev === null) return null;
+  const abs = cur-prev;
+  const pct = prev !== 0 ? (abs/prev*100) : (cur>0?100:0);
+  return {abs, pct};
+}
+
+function computeDerived(m){
+  const crFtd = m.registrations ? (m.ftd/m.registrations*100) : 0;
+  const cpaFtd = m.ftd ? (m.spend/m.ftd) : null;
+  const cpaReg = m.registrations ? (m.spend/m.registrations) : null;
+  return {...m, crFtd, cpaFtd, cpaReg};
+}
+
+async function loadData(){
+  const banner = document.getElementById('statusBanner');
+  try{
+    const [latestRes, historyRes] = await Promise.all([
+      fetch('./data/latest.json', {cache:'no-store'}),
+      fetch('./data/history.json', {cache:'no-store'}),
+    ]);
+    if(!latestRes.ok) throw new Error('latest.json недоступен (' + latestRes.status + ')');
+    LATEST = await latestRes.json();
+    HISTORY = historyRes.ok ? await historyRes.json() : {};
+
+    const generated = new Date(LATEST.generated_at);
+    document.getElementById('updatedAt').textContent = generated.toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+    document.getElementById('sourceNote').textContent = 'источники: Alanbase API · Google Sheets (Spend)';
+
+    const ageHours = (Date.now() - generated.getTime()) / 3600000;
+    if(ageHours > 30){
+      banner.style.display = '';
+      banner.textContent = `Данные собирались ${Math.round(ageHours)} ч назад — проверь, что автозапуск (GitHub Actions) отработал без ошибок.`;
+    } else {
+      banner.style.display = 'none';
+    }
+    render();
+  }catch(err){
+    banner.style.display = '';
+    banner.textContent = 'Не смог загрузить данные: ' + err.message + '. Если сборщик ещё не запускался — запусти workflow вручную в разделе Actions.';
+    document.getElementById('sourceNote').textContent = 'нет данных';
+  }
+}
+
+function renderTabs(){
+  const tabs = document.getElementById('groupTabs');
+  tabs.innerHTML = '';
+  Object.entries(GROUP_META).forEach(([key,meta])=>{
+    const btn = document.createElement('button');
+    btn.className = key===state.group ? 'active':'';
+    btn.textContent = meta.title;
+    btn.onclick = ()=>{ state.group=key; render(); };
+    tabs.appendChild(btn);
+  });
+}
+
+function renderKPIs(){
+  const g = LATEST.groups[state.group];
+  const cur = computeDerived(g.current);
+  const prev = computeDerived(g.previous);
+
+  const cards = [
+    { label:'Registrations', val:fmtInt(cur.registrations), d:delta(cur.registrations, prev.registrations) },
+    { label:'FTD', val:fmtInt(cur.ftd), d:delta(cur.ftd, prev.ftd) },
+    { label:'GGR', val:fmtMoney(cur.ggr), d:delta(cur.ggr, prev.ggr) },
+    { label:'NGR', val:fmtMoney(cur.ngr), d:delta(cur.ngr, prev.ngr) },
+    { label:'CR FTD', val:fmtPct(cur.crFtd), d:delta(cur.crFtd, prev.crFtd) },
+    { label:'CPA FTD', val: cur.cpaFtd!=null ? '$'+cur.cpaFtd.toFixed(2) : '—', d: (cur.cpaFtd!=null&&prev.cpaFtd!=null) ? delta(cur.cpaFtd, prev.cpaFtd) : null, invert:true },
+  ];
+
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = '';
+  cards.forEach(c=>{
+    let dir = '';
+    if(c.d){
+      const positive = c.invert ? c.d.pct < 0 : c.d.pct > 0;
+      dir = positive ? 'up':'down';
+    }
+    const el = document.createElement('div');
+    el.className = 'kpi ' + dir;
+    el.innerHTML = `
+      <p class="kpi-label">${c.label}</p>
+      <p class="kpi-value">${c.val}</p>
+      ${c.d ? `<div class="delta ${dir}">${dir==='up'?'▲':(dir==='down'?'▼':'—')} ${Math.abs(c.d.pct).toFixed(1)}% <span class="prev">к прошл. неделе</span></div>` : `<div class="delta"><span class="prev">нет данных за пред. период</span></div>`}
+    `;
+    grid.appendChild(el);
+  });
+}
+
+function renderChart(){
+  const meta = GROUP_META[state.group];
+  const chartPanel = document.getElementById('chartPanel');
+  if(!meta.hasDashboard){ chartPanel.style.display = 'none'; return; }
+  chartPanel.style.display = '';
+  document.getElementById('chartTitle').textContent = 'Динамика — ' + meta.title;
+
+  const hist = (HISTORY && HISTORY[state.group]) ? HISTORY[state.group] : [];
+  const labels = hist.map(h => h.date.slice(5).split('-').reverse().join('.'));
+
+  const ctx = document.getElementById('historyChart');
+  if(chartRef) chartRef.destroy();
+
+  if(hist.length < 2){
+    ctx.getContext('2d').clearRect(0,0,ctx.width,ctx.height);
+    const wrap = ctx.parentElement;
+    let note = wrap.querySelector('.empty-note');
+    if(!note){ note = document.createElement('div'); note.className='empty-note'; wrap.appendChild(note); }
+    note.textContent = 'Пока накоплено меньше двух точек истории — график появится после нескольких запусков сборщика (раз в день).';
+    ctx.style.display = 'none';
+    return;
+  }
+  ctx.style.display='';
+  const existingNote = ctx.parentElement.querySelector('.empty-note');
+  if(existingNote) existingNote.remove();
+
+  chartRef = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        { label:'Registrations', data:hist.map(h=>h.registrations), borderColor:'#1F6F5C', backgroundColor:'rgba(31,111,92,0.08)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
+        { label:'FTD', data:hist.map(h=>h.ftd), borderColor:'#A9791C', backgroundColor:'rgba(169,121,28,0.08)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
+        { label:'GGR (/100)', data:hist.map(h=>Math.round(h.ggr/100)), borderColor:'#5B6BB0', backgroundColor:'rgba(91,107,176,0.06)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        y:{ grid:{color:'#E2E5E0'}, ticks:{color:'#5C6B64', font:{family:'IBM Plex Mono', size:11}} },
+        x:{ grid:{display:false}, ticks:{color:'#5C6B64', font:{family:'IBM Plex Mono', size:11}} }
+      }
+    }
+  });
+}
+
+function renderTable(){
+  const meta = GROUP_META[state.group];
+  const g = LATEST.groups[state.group];
+  const cur = computeDerived(g.current);
+
+  document.getElementById('tableTitle').textContent = meta.title;
+  document.getElementById('tableHint').textContent = 'разбивка по отдельным партнёрам — следующий шаг';
+
+  const table = document.getElementById('dataTable');
+  table.innerHTML = `
+    <thead><tr>
+      <th>Группа</th>
+      <th class="num-h">Registrations</th><th class="num-h">FTD</th>
+      <th class="num-h">GGR</th><th class="num-h">NGR</th>
+      <th class="num-h">CR FTD</th><th class="num-h">Spend</th><th class="num-h">CPA FTD</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td>${meta.title} (все теги группы)</td>
+        <td class="num">${fmtInt(cur.registrations)}</td>
+        <td class="num">${fmtInt(cur.ftd)}</td>
+        <td class="num">${fmtMoney(cur.ggr)}</td>
+        <td class="num">${fmtMoney(cur.ngr)}</td>
+        <td class="num">${fmtPct(cur.crFtd)}</td>
+        <td class="num">${cur.spend?fmtMoney(cur.spend):'<span class="muted-cell">0</span>'}</td>
+        <td class="num">${cur.cpaFtd!=null?('$'+cur.cpaFtd.toFixed(2)):'<span class="muted-cell">—</span>'}</td>
+      </tr>
+    </tbody>`;
+}
+
+function render(){
+  renderTabs();
+  renderKPIs();
+  renderChart();
+  renderTable();
+}
+
+loadData();
+</script>
+</body></html>
