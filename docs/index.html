@@ -129,8 +129,9 @@
       <h1>Affiliate Ledger</h1>
       <div class="sub">источники: Alanbase API · Google Sheets (Spend)</div>
     </div>
-    <div class="meta">Обновлено <b id="updatedAt">21.07 · 09:14</b><br>Прототип · данные условные</div>
+    <div class="meta">Обновлено <b id="updatedAt">—</b><br><span id="sourceNote">загрузка данных...</span></div>
   </div>
+  <div id="statusBanner" style="display:none; background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber); border-radius:var(--radius); padding:10px 14px; font-size:12.5px; font-family:'IBM Plex Mono',monospace; margin-bottom:16px;"></div>
 
   <div class="controls">
     <div class="seg" id="periodSeg">
@@ -204,9 +205,10 @@ function delta(cur, prev){
 
 function computeDerived(m){
   const crFtd = m.registrations ? (m.ftd/m.registrations*100) : 0;
-  const cpaFtd = m.ftd ? (m.spend/m.ftd) : null;
-  const cpaReg = m.registrations ? (m.spend/m.registrations) : null;
-  return {...m, crFtd, cpaFtd, cpaReg};
+  const hasSpend = m.spend !== null && m.spend !== undefined;
+  const cpaFtd = (hasSpend && m.ftd) ? (m.spend/m.ftd) : null;
+  const cpaReg = (hasSpend && m.registrations) ? (m.spend/m.registrations) : null;
+  return {...m, spend: hasSpend ? m.spend : null, crFtd, cpaFtd, cpaReg};
 }
 
 async function loadData(){
@@ -225,9 +227,15 @@ async function loadData(){
     document.getElementById('sourceNote').textContent = 'источники: Alanbase API · Google Sheets (Spend)';
 
     const ageHours = (Date.now() - generated.getTime()) / 3600000;
+    const staleGroups = LATEST.spend_stale_warnings || {};
+    const staleNames = Object.keys(staleGroups).map(g => (GROUP_META[g]||{title:g}).title);
+
     if(ageHours > 30){
       banner.style.display = '';
       banner.textContent = `Данные собирались ${Math.round(ageHours)} ч назад — проверь, что автозапуск (GitHub Actions) отработал без ошибок.`;
+    } else if(staleNames.length){
+      banner.style.display = '';
+      banner.textContent = `Похоже, таблицу расходов давно не обновляли (без изменений ${Math.max(...Object.values(staleGroups))}+ дней): ${staleNames.join(', ')}. Проверь Spend за текущую неделю.`;
     } else {
       banner.style.display = 'none';
     }
