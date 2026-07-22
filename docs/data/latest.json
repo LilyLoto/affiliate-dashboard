@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-21T18:15:51.230403Z",
+  "generated_at": "2026-07-22T12:14:19.329013Z",
   "period": {
     "from": "2026-07-20 00:00",
-    "to": "2026-07-21 23:59"
+    "to": "2026-07-22 23:59"
   },
   "previous_period": {
     "from": "2026-07-13 00:00",
@@ -11,11 +11,11 @@
   "groups": {
     "partners": {
       "current": {
-        "registrations": 46572,
-        "ftd": 46572,
-        "ggr": 181890.58,
+        "registrations": 62834,
+        "ftd": 62834,
+        "ggr": 248030.97,
         "spend": 0.0,
-        "ngr": 109134.35
+        "ngr": 148818.58
       },
       "previous": {
         "registrations": 175137,
@@ -27,11 +27,11 @@
     },
     "seo": {
       "current": {
-        "registrations": 65443,
-        "ftd": 65443,
-        "ggr": 328597.17,
+        "registrations": 88693,
+        "ftd": 88693,
+        "ggr": 444278.86,
         "spend": 0.0,
-        "ngr": 197158.3
+        "ngr": 266567.32
       },
       "previous": {
         "registrations": 245515,
@@ -43,11 +43,11 @@
     },
     "inhouse": {
       "current": {
-        "registrations": 8180,
-        "ftd": 8180,
-        "ggr": 9975.52,
+        "registrations": 11349,
+        "ftd": 11349,
+        "ggr": 15592.17,
         "spend": 0.0,
-        "ngr": 5985.31
+        "ngr": 9355.3
       },
       "previous": {
         "registrations": 25188,
@@ -59,11 +59,11 @@
     },
     "cc": {
       "current": {
-        "registrations": 181,
-        "ftd": 181,
-        "ggr": 66.12,
+        "registrations": 275,
+        "ftd": 275,
+        "ggr": 131.67,
         "spend": 0.0,
-        "ngr": 39.67
+        "ngr": 79.0
       },
       "previous": {
         "registrations": 2239,
@@ -75,11 +75,11 @@
     },
     "inactive": {
       "current": {
-        "registrations": 5158,
-        "ftd": 5158,
-        "ggr": 16092.42,
+        "registrations": 7382,
+        "ftd": 7382,
+        "ggr": 22141.6,
         "spend": 0.0,
-        "ngr": 9655.45
+        "ngr": 13284.96
       },
       "previous": {
         "registrations": 22820,
