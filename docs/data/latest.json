@@ -1,94 +1,14 @@
 {
-  "generated_at": "2026-07-23T12:30:53.184945Z",
-  "period": {
-    "from": "2026-07-20 00:00",
-    "to": "2026-07-23 23:59"
-  },
-  "previous_period": {
-    "from": "2026-07-13 00:00",
-    "to": "2026-07-19 23:59"
-  },
-  "groups": {
-    "partners": {
-      "current": {
-        "registrations": 600,
-        "ftd": 212,
-        "ggr": 8120.0,
-        "spend": 0.0,
-        "ngr": 4872.0
-      },
-      "previous": {
-        "registrations": 694,
-        "ftd": 269,
-        "ggr": 26998.99,
-        "spend": null,
-        "ngr": 16199.39
-      }
-    },
-    "seo": {
-      "current": {
-        "registrations": 49,
-        "ftd": 35,
-        "ggr": 30472.14,
-        "spend": 0.0,
-        "ngr": 18283.28
-      },
-      "previous": {
-        "registrations": 66,
-        "ftd": 53,
-        "ggr": 76757.65,
-        "spend": null,
-        "ngr": 46054.59
-      }
-    },
-    "inhouse": {
-      "current": {
-        "registrations": 133,
-        "ftd": 37,
-        "ggr": 1525.7,
-        "spend": 0.0,
-        "ngr": 915.42
-      },
-      "previous": {
-        "registrations": 238,
-        "ftd": 79,
-        "ggr": 1852.13,
-        "spend": null,
-        "ngr": 1111.28
-      }
-    },
-    "cc": {
-      "current": {
-        "registrations": 4,
-        "ftd": 3,
-        "ggr": 46.73,
-        "spend": 0.0,
-        "ngr": 28.04
-      },
-      "previous": {
-        "registrations": 3,
-        "ftd": 3,
-        "ggr": 64.36,
-        "spend": null,
-        "ngr": 38.62
-      }
-    },
-    "inactive": {
-      "current": {
-        "registrations": 10,
-        "ftd": 7,
-        "ggr": 1115.88,
-        "spend": 0.0,
-        "ngr": 669.53
-      },
-      "previous": {
-        "registrations": 1,
-        "ftd": 2,
-        "ggr": 3660.65,
-        "spend": null,
-        "ngr": 2196.39
-      }
-    }
-  },
+  "generated_at": "2026-07-23T15:37:19.943026Z",
+  "available_weeks": [
+    "2026-07-20",
+    "2026-07-13",
+    "2026-07-06",
+    "2026-06-29"
+  ],
+  "available_months": [
+    "2026-07",
+    "2026-06"
+  ],
   "spend_stale_warnings": {}
 }
