@@ -1,13 +1,25 @@
 """
-Собирает статистику из Alanbase API (по partner_id и offer_id)
-+ читает три вкладки Google Sheets:
-  - "Партнёры"            — какой partner_id в какой группе (обычные)
-  - "Партнёры_по_офферам" — для "составных" партнёров, у которых разные
-                            офферы относятся к разным группам
-  - "Расходы"              — Spend по неделям, по partner_id (и offer_id
-                             для составных партнёров)
+Собирает статистику из Alanbase API + Google Sheets, считает метрики
+по группам (partners/seo/inhouse/cc/inactive) и сохраняет
+docs/data/latest.json + docs/data/history.json.
 
-Сохраняет docs/data/latest.json + docs/data/history.json.
+ВАЖНО про Alanbase API:
+  /admin/statistic/common      — готовая сводка, но НЕ умеет фильтровать
+                                  по цели (goal_keys игнорируется).
+  /admin/statistic/conversions — отдаёт список конверсий поштучно, умеет
+                                  фильтровать по goal_keys[], но агрегацию
+                                  (по партнёру/офферу) нужно считать самим.
+  Поэтому здесь используется только /conversions, а суммы по группам
+  считаются в Python из списка конверсий.
+
+  Лимиты Alanbase: макс. 1000 записей на страницу, макс. 30 запросов/мин.
+
+Три вкладки Google Sheets:
+  - "Партнёры"            — partner_id -> группа (это и дефолт для составных)
+  - "Партнёры_по_офферам" — ИСКЛЮЧЕНИЯ: (partner_id, offer_id) -> другая группа
+  - "Расходы"              — Spend по неделям, partner_id (+ offer_id для
+                              офферов-исключений), период указывается датами
+
 Запускается через .github/workflows/collect.yml по расписанию,
 либо вручную: python scripts/collect.py
 """
@@ -16,7 +28,7 @@ import os
 import json
 import csv
 import io
-import re
+import time
 import datetime
 import urllib.request
 import urllib.parse
@@ -29,18 +41,15 @@ BASE_URL = "https://lofto.api.alanbase.com/v1"
 API_KEY = os.environ["ALANBASE_API_KEY"]
 SHEET_ID = os.environ["SHEET_ID"]
 
-TIMEZONE = "Asia/Almaty"
+TIMEZONE = "Europe/London"
 CURRENCY = "USD"
 
-# gid каждой вкладки — если пересоздашь вкладку, gid поменяется,
-# тогда поправь тут
 GID_PARTNERS = "172795040"
 GID_SPEND = "1069978200"
 GID_PARTNER_OFFERS = "89777085"
 
 GROUPS = ["partners", "seo", "inhouse", "cc", "inactive"]
 
-# нормализация написания групп: разные варианты записи -> канонический ключ
 GROUP_ALIASES = {
     "partners": "partners", "партнеры": "partners", "партнёры": "partners",
     "seo": "seo", "сео": "seo",
@@ -52,6 +61,9 @@ GROUP_ALIASES = {
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "data")
 HISTORY_MAX_POINTS = 60
 
+PER_PAGE = 1000
+SLEEP_BETWEEN_REQUESTS = 2.2  # секунды; держит нас в пределах 30 запросов/мин с запасом
+
 
 def normalize_group(raw):
     if not raw:
@@ -61,7 +73,7 @@ def normalize_group(raw):
 
 
 # ---------------------------------------------------------------
-# ЧТЕНИЕ ТАБЛИЦЫ (три вкладки, каждая по своему gid)
+# ЧТЕНИЕ ТАБЛИЦЫ
 # ---------------------------------------------------------------
 
 def read_sheet_tab(gid):
@@ -84,7 +96,6 @@ def read_sheet_tab(gid):
 
 
 def load_partner_groups():
-    """Вкладка 'Партнёры': {partner_id: group}. Пропускает нераспознанные группы."""
     mapping = {}
     for row in read_sheet_tab(GID_PARTNERS):
         pid = row.get("partner_id", "")
@@ -99,7 +110,6 @@ def load_partner_groups():
 
 
 def load_partner_offer_overrides():
-    """Вкладка 'Партнёры_по_офферам': {(partner_id, offer_id): group} + set составных partner_id."""
     mapping = {}
     override_partner_ids = set()
     for row in read_sheet_tab(GID_PARTNER_OFFERS):
@@ -107,17 +117,16 @@ def load_partner_offer_overrides():
         oid = row.get("offer_id", "")
         if not pid or not oid:
             continue
+        override_partner_ids.add(pid)
         group = normalize_group(row.get("группа", ""))
         if group is None:
-            print(f"[warn] partner_id {pid} offer_id {oid}: неизвестная группа '{row.get('группа')}' — пропущен")
+            print(f"[warn] partner_id {pid} offer_id {oid}: неизвестная группа '{row.get('группа')}' — пропущен из исключений")
             continue
         mapping[(pid, oid)] = group
-        override_partner_ids.add(pid)
     return mapping, override_partner_ids
 
 
 def load_spend_rows():
-    """Вкладка 'Расходы' — список строк с датами периода, partner_id, offer_id (может быть пустым), spend."""
     rows = []
     for row in read_sheet_tab(GID_SPEND):
         pid = row.get("partner_id", "")
@@ -144,108 +153,84 @@ def load_spend_rows():
 
 
 # ---------------------------------------------------------------
-# ALANBASE API
+# ALANBASE API — /admin/statistic/conversions
 # ---------------------------------------------------------------
 
-def api_get(path, params):
-    all_rows = []
+def fetch_conversions(goal_key, date_from, date_to):
+    """
+    Тянет ВСЕ конверсии по одной цели за период (с пагинацией),
+    возвращает список словарей {partner_id, offer_id, value}.
+    """
+    results = []
     page = 1
     while True:
-        q = dict(params)
-        q["page"] = page
-        q["per_page"] = 100
-        url = f"{BASE_URL}{path}?" + urllib.parse.urlencode(q, doseq=True)
+        params = {
+            "timezone": TIMEZONE,
+            "date_from": date_from,
+            "date_to": date_to,
+            "currency_code": CURRENCY,
+            "goal_keys[]": [goal_key],
+            "per_page": PER_PAGE,
+            "page": page,
+        }
+        url = f"{BASE_URL}/admin/statistic/conversions?" + urllib.parse.urlencode(params, doseq=True)
         req = urllib.request.Request(url, headers={
             "API-KEY": API_KEY,
             "Content-Type": "application/json",
         })
+        time.sleep(SLEEP_BETWEEN_REQUESTS)
         with urllib.request.urlopen(req, timeout=30) as resp:
             body = json.loads(resp.read().decode("utf-8"))
+
         rows = body.get("data", [])
-        all_rows.extend(rows)
+        for row in rows:
+            partner = row.get("partner") or {}
+            offer = row.get("offer") or {}
+            value = row.get("value") or row.get("revenue") or 0
+            results.append({
+                "partner_id": str(partner.get("id", "")),
+                "offer_id": str(offer.get("id", "")),
+                "value": value,
+            })
+
         meta = body.get("meta", {})
         last_page = meta.get("last_page", 1) or 1
         if page >= last_page or not rows:
             break
         page += 1
-    return all_rows
 
-
-def fetch_by_partner(goal_key, date_from, date_to):
-    """group_by=partner — для обычных партнёров. Возвращает {partner_id: {count, value}}."""
-    rows = api_get("/admin/statistic/common", {
-        "group_by": "partner",
-        "timezone": TIMEZONE,
-        "date_from": date_from,
-        "date_to": date_to,
-        "currency_code": CURRENCY,
-        "goal_keys[]": [goal_key],
-    })
-    result = {}
-    for row in rows:
-        fields = row.get("group_fields", [])
-        pid = str(fields[0]["id"]) if fields else "unknown"
-        total = row.get("conversions", {}).get("total", {})
-        result[pid] = {
-            "count": total.get("count", 0),
-            "value": total.get("value", 0) or total.get("revenue", 0) or 0,
-        }
-    return result
-
-
-def fetch_by_offer_for_partner(goal_key, partner_id, date_from, date_to):
-    """group_by=offer, отфильтровано по одному partner_id — для составных партнёров."""
-    rows = api_get("/admin/statistic/common", {
-        "group_by": "offer",
-        "timezone": TIMEZONE,
-        "date_from": date_from,
-        "date_to": date_to,
-        "currency_code": CURRENCY,
-        "goal_keys[]": [goal_key],
-        "partner_ids[]": [partner_id],
-    })
-    result = {}
-    for row in rows:
-        fields = row.get("group_fields", [])
-        oid = str(fields[0]["id"]) if fields else "unknown"
-        total = row.get("conversions", {}).get("total", {})
-        result[oid] = {
-            "count": total.get("count", 0),
-            "value": total.get("value", 0) or total.get("revenue", 0) or 0,
-        }
-    return result
+    return results
 
 
 # ---------------------------------------------------------------
 # СБОРКА МЕТРИК ЗА ПЕРИОД
 # ---------------------------------------------------------------
 
+def route_to_group(pid, oid, partner_groups, overrides, override_partner_ids):
+    if pid in override_partner_ids:
+        return overrides.get((pid, oid), partner_groups.get(pid))
+    return partner_groups.get(pid)
+
+
 def build_metric_aggregates(date_from, date_to, partner_groups, overrides, override_partner_ids):
     aggregates = {g: {"registrations": 0, "ftd": 0, "ggr": 0.0} for g in GROUPS}
+    unknown_partners = set()
 
-    # обычные партнёры — одним запросом на всех
     for goal, field in [("registration", "registrations"), ("ftd", "ftd"), ("ggr", "ggr")]:
-        by_partner = fetch_by_partner(goal, date_from, date_to)
-        for pid, data in by_partner.items():
-            if pid in override_partner_ids:
-                continue  # у составных партнёров считаем по офферам ниже
-            group = partner_groups.get(pid)
+        conversions = fetch_conversions(goal, date_from, date_to)
+        print(f"  {goal}: получено {len(conversions)} конверсий")
+        for row in conversions:
+            group = route_to_group(row["partner_id"], row["offer_id"], partner_groups, overrides, override_partner_ids)
             if not group:
-                continue  # partner_id не найден в справочнике "Партнёры" — пропускаем
-            value = data["value"] if field == "ggr" else data["count"]
-            aggregates[group][field] += value
+                unknown_partners.add(row["partner_id"])
+                continue
+            if field == "ggr":
+                aggregates[group]["ggr"] += row["value"]
+            else:
+                aggregates[group][field] += 1
 
-    # составные партнёры — по офферам, отдельным запросом на каждого
-    for pid in override_partner_ids:
-        for goal, field in [("registration", "registrations"), ("ftd", "ftd"), ("ggr", "ggr")]:
-            by_offer = fetch_by_offer_for_partner(goal, pid, date_from, date_to)
-            for oid, data in by_offer.items():
-                group = overrides.get((pid, oid))
-                if not group:
-                    print(f"[info] partner_id {pid} offer_id {oid}: нет в 'Партнёры_по_офферам' — пропущен")
-                    continue
-                value = data["value"] if field == "ggr" else data["count"]
-                aggregates[group][field] += value
+    if unknown_partners:
+        print(f"[info] партнёры без группы (нет в 'Партнёры'): {sorted(unknown_partners)}")
 
     for g in aggregates:
         aggregates[g]["ggr"] = round(aggregates[g]["ggr"], 2)
@@ -253,7 +238,6 @@ def build_metric_aggregates(date_from, date_to, partner_groups, overrides, overr
 
 
 def spend_for_period(spend_rows, date_from, date_to, partner_groups, overrides):
-    """Ищет в Расходы строки, чей период ТОЧНО совпадает с запрошенной неделей."""
     want_from = date_from.split(" ")[0]
     want_to = date_to.split(" ")[0]
     aggregates = {g: 0.0 for g in GROUPS}
@@ -263,10 +247,8 @@ def spend_for_period(spend_rows, date_from, date_to, partner_groups, overrides):
             continue
         matched_any = True
         pid, oid = row["partner_id"], row["offer_id"]
-        if oid:
-            group = overrides.get((pid, oid))
-        else:
-            group = partner_groups.get(pid)
+        default_group = partner_groups.get(pid)
+        group = overrides.get((pid, oid), default_group) if oid else default_group
         if not group:
             continue
         aggregates[group] += row["spend"]
@@ -291,9 +273,12 @@ def main():
     partner_groups = load_partner_groups()
     overrides, override_partner_ids = load_partner_offer_overrides()
     spend_rows = load_spend_rows()
-    print(f"Загружено: {len(partner_groups)} партнёров, {len(overrides)} офферов-исключений, {len(spend_rows)} строк расходов")
+    print(f"Загружено: {len(partner_groups)} партнёров, {len(overrides)} офферов-исключений, "
+          f"{len(override_partner_ids)} составных партнёров, {len(spend_rows)} строк расходов")
 
+    print("Тянем конверсии за текущую неделю...")
     current_metrics = build_metric_aggregates(cur_from, cur_to, partner_groups, overrides, override_partner_ids)
+    print("Тянем конверсии за прошлую неделю...")
     previous_metrics = build_metric_aggregates(prev_from, prev_to, partner_groups, overrides, override_partner_ids)
 
     current_spend, cur_spend_matched = spend_for_period(spend_rows, cur_from, cur_to, partner_groups, overrides)
@@ -315,7 +300,7 @@ def main():
         latest_groups[g] = {"current": cur, "previous": prev}
 
     latest = {
-        "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
         "period": {"from": cur_from, "to": cur_to},
         "previous_period": {"from": prev_from, "to": prev_to},
         "groups": latest_groups,
