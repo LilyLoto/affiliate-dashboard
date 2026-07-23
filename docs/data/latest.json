@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-22T12:14:19.329013Z",
+  "generated_at": "2026-07-23T10:49:24.234333Z",
   "period": {
     "from": "2026-07-20 00:00",
-    "to": "2026-07-22 23:59"
+    "to": "2026-07-23 23:59"
   },
   "previous_period": {
     "from": "2026-07-13 00:00",
@@ -11,82 +11,82 @@
   "groups": {
     "partners": {
       "current": {
-        "registrations": 62834,
-        "ftd": 62834,
-        "ggr": 248030.97,
+        "registrations": 587,
+        "ftd": 209,
+        "ggr": 3635564.0,
         "spend": 0.0,
-        "ngr": 148818.58
+        "ngr": 2181338.4
       },
       "previous": {
-        "registrations": 175137,
-        "ftd": 175137,
-        "ggr": 705629.52,
+        "registrations": 694,
+        "ftd": 269,
+        "ggr": 12616350.0,
         "spend": null,
-        "ngr": 423377.71
+        "ngr": 7569810.0
       }
     },
     "seo": {
       "current": {
-        "registrations": 88693,
-        "ftd": 88693,
-        "ggr": 444278.86,
+        "registrations": 47,
+        "ftd": 32,
+        "ggr": 13666209.0,
         "spend": 0.0,
-        "ngr": 266567.32
+        "ngr": 8199725.4
       },
       "previous": {
-        "registrations": 245515,
-        "ftd": 245515,
-        "ggr": 1280093.17,
+        "registrations": 66,
+        "ftd": 53,
+        "ggr": 35868060.0,
         "spend": null,
-        "ngr": 768055.9
+        "ngr": 21520836.0
       }
     },
     "inhouse": {
       "current": {
-        "registrations": 11349,
-        "ftd": 11349,
-        "ggr": 15592.17,
+        "registrations": 130,
+        "ftd": 35,
+        "ggr": 745249.0,
         "spend": 0.0,
-        "ngr": 9355.3
+        "ngr": 447149.4
       },
       "previous": {
-        "registrations": 25188,
-        "ftd": 25188,
-        "ggr": 35015.92,
+        "registrations": 238,
+        "ftd": 79,
+        "ggr": 865482.0,
         "spend": null,
-        "ngr": 21009.55
+        "ngr": 519289.2
       }
     },
     "cc": {
       "current": {
-        "registrations": 275,
-        "ftd": 275,
-        "ggr": 131.67,
+        "registrations": 4,
+        "ftd": 3,
+        "ggr": 21335.0,
         "spend": 0.0,
-        "ngr": 79.0
+        "ngr": 12801.0
       },
       "previous": {
-        "registrations": 2239,
-        "ftd": 2239,
-        "ggr": 1399.34,
+        "registrations": 3,
+        "ftd": 3,
+        "ggr": 30075.0,
         "spend": null,
-        "ngr": 839.6
+        "ngr": 18045.0
       }
     },
     "inactive": {
       "current": {
-        "registrations": 7382,
-        "ftd": 7382,
-        "ggr": 22141.6,
+        "registrations": 10,
+        "ftd": 7,
+        "ggr": 526177.0,
         "spend": 0.0,
-        "ngr": 13284.96
+        "ngr": 315706.2
       },
       "previous": {
-        "registrations": 22820,
-        "ftd": 22820,
-        "ggr": 72538.65,
+        "registrations": 1,
+        "ftd": 2,
+        "ggr": 1710583.0,
         "spend": null,
-        "ngr": 43523.19
+        "ngr": 1026349.8
       }
     }
   },
