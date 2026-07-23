@@ -32,6 +32,7 @@ import time
 import datetime
 import urllib.request
 import urllib.parse
+import urllib.error
 
 # ---------------------------------------------------------------
 # НАСТРОЙКИ
@@ -63,6 +64,26 @@ HISTORY_MAX_POINTS = 60
 
 PER_PAGE = 1000
 SLEEP_BETWEEN_REQUESTS = 2.2  # секунды; держит нас в пределах 30 запросов/мин с запасом
+
+# Alanbase НЕ конвертирует поле "value" в конверсиях по currency_code —
+# оно всегда приходит в исходной валюте продукта (для этого аккаунта — KZT).
+# Курс статичный, обновляй вручную по мере изменения реального курса.
+# Текущий: 500 KZT = 1.07 USD (задано пользователем 23.07.2026)
+CURRENCY_RATES_TO_USD = {
+    "USD": 1.0,
+    "KZT": 1.07 / 500,
+}
+_unknown_currencies_warned = set()
+
+
+def to_usd(value, currency):
+    rate = CURRENCY_RATES_TO_USD.get(currency)
+    if rate is None:
+        if currency not in _unknown_currencies_warned:
+            print(f"[warn] неизвестная валюта '{currency}' — считаю как USD 1:1, добавь курс в CURRENCY_RATES_TO_USD")
+            _unknown_currencies_warned.add(currency)
+        rate = 1.0
+    return value * rate
 
 
 def normalize_group(raw):
@@ -156,45 +177,80 @@ def load_spend_rows():
 # ALANBASE API — /admin/statistic/conversions
 # ---------------------------------------------------------------
 
+MAX_RETRIES = 5
+RETRYABLE_HTTP_CODES = {500, 502, 503, 504}
+
+
+def _request_page(goal_key, date_from, date_to, page):
+    """Один запрос одной страницы, с повтором при временных ошибках сервера (5xx)."""
+    params = {
+        "timezone": TIMEZONE,
+        "date_from": date_from,
+        "date_to": date_to,
+        "currency_code": CURRENCY,
+        "goal_keys[]": [goal_key],
+        "per_page": PER_PAGE,
+        "page": page,
+    }
+    url = f"{BASE_URL}/admin/statistic/conversions?" + urllib.parse.urlencode(params, doseq=True)
+    req = urllib.request.Request(url, headers={
+        "API-KEY": API_KEY,
+        "Content-Type": "application/json",
+    })
+
+    last_error = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        time.sleep(SLEEP_BETWEEN_REQUESTS)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            last_error = e
+            if e.code in RETRYABLE_HTTP_CODES and attempt < MAX_RETRIES:
+                backoff = 3 * (2 ** (attempt - 1))  # 3s, 6s, 12s, 24s...
+                print(f"  [warn] {goal_key} стр.{page}: HTTP {e.code}, повтор через {backoff}с (попытка {attempt}/{MAX_RETRIES})")
+                time.sleep(backoff)
+                continue
+            raise
+        except urllib.error.URLError as e:
+            last_error = e
+            if attempt < MAX_RETRIES:
+                backoff = 3 * (2 ** (attempt - 1))
+                print(f"  [warn] {goal_key} стр.{page}: {e}, повтор через {backoff}с (попытка {attempt}/{MAX_RETRIES})")
+                time.sleep(backoff)
+                continue
+            raise
+    raise last_error
+
+
 def fetch_conversions(goal_key, date_from, date_to):
     """
     Тянет ВСЕ конверсии по одной цели за период (с пагинацией),
     возвращает список словарей {partner_id, offer_id, value}.
+    Автоматически повторяет запрос при временных сбоях сервера (502/503/504).
     """
     results = []
     page = 1
     while True:
-        params = {
-            "timezone": TIMEZONE,
-            "date_from": date_from,
-            "date_to": date_to,
-            "currency_code": CURRENCY,
-            "goal_keys[]": [goal_key],
-            "per_page": PER_PAGE,
-            "page": page,
-        }
-        url = f"{BASE_URL}/admin/statistic/conversions?" + urllib.parse.urlencode(params, doseq=True)
-        req = urllib.request.Request(url, headers={
-            "API-KEY": API_KEY,
-            "Content-Type": "application/json",
-        })
-        time.sleep(SLEEP_BETWEEN_REQUESTS)
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
+        body = _request_page(goal_key, date_from, date_to, page)
 
         rows = body.get("data", [])
         for row in rows:
             partner = row.get("partner") or {}
             offer = row.get("offer") or {}
-            value = row.get("value") or row.get("revenue") or 0
+            raw_value = row.get("value") or row.get("revenue") or 0
+            currency = row.get("value_currency") or "USD"
+            value_usd = to_usd(raw_value, currency)
             results.append({
                 "partner_id": str(partner.get("id", "")),
                 "offer_id": str(offer.get("id", "")),
-                "value": value,
+                "value": value_usd,
             })
 
         meta = body.get("meta", {})
         last_page = meta.get("last_page", 1) or 1
+        if page == 1 or page % 10 == 0 or page >= last_page:
+            print(f"  {goal_key}: страница {page}/{last_page}, собрано {len(results)}")
         if page >= last_page or not rows:
             break
         page += 1
