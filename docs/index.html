@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Affiliate Ledger — прототип дашборда</title>
+<title>Affiliate Ledger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -20,7 +20,11 @@
     --danger-soft:#F5E1DA;
     --amber:#A9791C;
     --amber-soft:#F3E7CE;
-    --radius:6px;
+    --blue:#2A5FA5;
+    --blue-soft:#DCE7F5;
+    --indigo:#5B4B8A;
+    --indigo-soft:#E6E1F2;
+    --radius:10px;
   }
   *{box-sizing:border-box;}
   body{
@@ -30,47 +34,64 @@
     font-family:'Space Grotesk', sans-serif;
     -webkit-font-smoothing:antialiased;
   }
-  .num, table td.num, .kpi-value, .delta, th.num-h{
+  .num, .kpi-value, .delta, th.num-h{
     font-family:'IBM Plex Mono', monospace;
     font-variant-numeric: tabular-nums;
     letter-spacing:-0.02em;
   }
   a{color:var(--accent);}
+  button{font-family:inherit; cursor:pointer;}
+  svg.icon{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
 
-  .shell{max-width:1180px; margin:0 auto; padding:28px 24px 60px;}
+  .shell{max-width:1220px; margin:0 auto; padding:28px 24px 60px;}
 
   .topbar{
     display:flex; justify-content:space-between; align-items:flex-end;
     padding-bottom:18px; margin-bottom:22px; border-bottom:2px solid var(--ink);
   }
-  .topbar h1{font-size:20px; font-weight:700; margin:0; letter-spacing:-0.01em;}
+  .topbar h1{font-size:22px; font-weight:700; margin:0; letter-spacing:-0.01em;}
   .topbar .sub{font-size:12px; color:var(--ink-muted); margin-top:4px; font-family:'IBM Plex Mono', monospace;}
-  .topbar .meta{text-align:right; font-size:12px; color:var(--ink-muted); font-family:'IBM Plex Mono', monospace;}
+  .topbar .meta{display:flex; align-items:center; gap:10px; font-size:12px; color:var(--ink-muted); font-family:'IBM Plex Mono', monospace;}
   .topbar .meta b{color:var(--ink); font-weight:600;}
+  #refreshBtn{
+    display:flex; align-items:center; justify-content:center; width:30px; height:30px;
+    border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--ink-muted);
+  }
+  #refreshBtn:hover{color:var(--accent); border-color:var(--accent);}
+  #refreshBtn.spinning svg{animation:spin 0.8s linear infinite;}
+  @keyframes spin{ to{ transform:rotate(360deg); } }
 
   .controls{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;}
   .seg{display:inline-flex; border:1px solid var(--ink); border-radius:var(--radius); overflow:hidden;}
   .seg button{
     border:none; background:var(--surface); color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;
-    font-size:12px; padding:8px 16px; cursor:pointer; border-right:1px solid var(--ink);
+    font-size:12px; padding:8px 16px; border-right:1px solid var(--ink);
   }
   .seg button:last-child{border-right:none;}
   .seg button.active{background:var(--ink); color:var(--surface);}
 
+  #periodValue{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); color:var(--ink);
+    font-family:'IBM Plex Mono',monospace; font-size:12px; padding:8px 12px;
+  }
+
   .tabs{display:flex; gap:2px; flex-wrap:wrap;}
   .tabs button{
     border:none; background:transparent; color:var(--ink-muted); font-family:'Space Grotesk',sans-serif;
-    font-weight:500; font-size:13px; padding:9px 14px; cursor:pointer; border-radius:var(--radius);
+    font-weight:500; font-size:13px; padding:9px 14px; border-radius:var(--radius);
     border-bottom:2px solid transparent;
   }
   .tabs button.active{color:var(--ink); border-bottom:2px solid var(--accent); background:var(--accent-soft);}
-  .tabs button .count{color:var(--ink-faint); font-family:'IBM Plex Mono',monospace; font-size:11px; margin-left:4px;}
 
-  .kpi-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:1px; background:var(--line); border:1px solid var(--line); margin-bottom:26px;}
-  .kpi{background:var(--surface); padding:14px 16px; border-left:3px solid var(--ink-faint);}
-  .kpi.up{border-left-color:var(--accent);}
-  .kpi.down{border-left-color:var(--danger);}
-  .kpi-label{font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.04em; margin:0 0 8px;}
+  .kpi-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:26px;}
+  .kpi{background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--ink-faint); border-radius:var(--radius); padding:16px;}
+  .kpi.up{border-top-color:var(--accent);}
+  .kpi.down{border-top-color:var(--danger);}
+  .kpi-head{display:flex; align-items:center; gap:8px; margin-bottom:12px;}
+  .kpi-icon{
+    width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .kpi-label{font-size:11.5px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.04em; margin:0;}
   .kpi-value{font-size:22px; font-weight:600; margin:0; color:var(--ink);}
   .delta{font-size:11px; margin-top:6px; display:flex; align-items:center; gap:4px;}
   .delta.up{color:var(--accent);}
@@ -86,6 +107,14 @@
 
   .chart-wrap{padding:14px 16px 8px; height:220px; position:relative;}
 
+  .insights{display:flex; gap:0; flex-wrap:wrap;}
+  .insight{flex:1; min-width:220px; display:flex; align-items:center; gap:12px; padding:16px; border-right:1px solid var(--line);}
+  .insight:last-child{border-right:none;}
+  .insight-icon{width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .insight-label{font-size:11px; color:var(--ink-muted); margin:0 0 3px;}
+  .insight-value{font-size:14px; font-weight:600; margin:0; font-family:'IBM Plex Mono',monospace;}
+  .insights-empty{padding:16px; font-size:12.5px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;}
+
   table{width:100%; border-collapse:collapse; font-size:12.5px;}
   thead th{
     text-align:left; padding:9px 14px; font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em;
@@ -94,30 +123,23 @@
   thead th.num-h{text-align:right;}
   tbody td{padding:9px 14px; border-bottom:1px solid var(--line); vertical-align:middle;}
   tbody td.num{text-align:right;}
-  tbody tr.partner-row{cursor:pointer;}
-  tbody tr.partner-row:hover{background:#F7F9F7;}
-  tbody tr.offer-row td{background:#FAFBF9; color:var(--ink-muted); font-size:12px;}
-  tbody tr.offer-row td:first-child{padding-left:34px;}
-  .caret{display:inline-block; width:14px; color:var(--ink-faint); font-size:11px; transition:transform .15s;}
-  .caret.open{transform:rotate(90deg); color:var(--ink);}
-  .tag{
-    display:inline-block; font-size:10.5px; font-family:'IBM Plex Mono',monospace; padding:2px 7px;
-    border-radius:4px; background:var(--accent-soft); color:var(--accent); font-weight:500;
+  tbody tr:hover{background:#F7F9F7;}
+  .offer-tag{
+    display:inline-block; font-size:10.5px; font-family:'IBM Plex Mono',monospace; padding:1px 7px;
+    border-radius:4px; background:var(--indigo-soft); color:var(--indigo); font-weight:500; margin-left:6px;
   }
-  .tag.warn{background:var(--amber-soft); color:var(--amber);}
-  .tag.muted{background:var(--line); color:var(--ink-muted);}
   .muted-cell{color:var(--ink-faint);}
   .foot-note{font-size:11.5px; color:var(--ink-muted); padding:12px 16px; border-top:1px solid var(--line); font-family:'IBM Plex Mono',monospace;}
   .foot-note a{color:var(--accent); text-decoration:none;}
   .empty-note{padding:16px; font-size:12.5px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;}
 
-  @media (max-width:900px){
+  @media (max-width:1000px){
     .kpi-grid{grid-template-columns:repeat(3,1fr);}
+    .insight{border-right:none; border-bottom:1px solid var(--line);}
   }
   @media (max-width:560px){
     .kpi-grid{grid-template-columns:repeat(2,1fr);}
     .topbar{flex-direction:column; align-items:flex-start; gap:8px;}
-    .topbar .meta{text-align:left;}
   }
 </style>
 </head>
@@ -127,16 +149,25 @@
   <div class="topbar">
     <div>
       <h1>Affiliate Ledger</h1>
-      <div class="sub">источники: Alanbase API · Google Sheets (Spend)</div>
+      <div class="sub">Источники: Alanbase API · Google Sheets (Spend)</div>
     </div>
-    <div class="meta">Обновлено <b id="updatedAt">—</b><br><span id="sourceNote">загрузка данных...</span></div>
+    <div class="meta">
+      <span>Обновлено <b id="updatedAt">—</b></span>
+      <button id="refreshBtn" title="Обновить данные" aria-label="Обновить данные">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+      </button>
+    </div>
   </div>
+
   <div id="statusBanner" style="display:none; background:var(--amber-soft); color:var(--amber); border:1px solid var(--amber); border-radius:var(--radius); padding:10px 14px; font-size:12.5px; font-family:'IBM Plex Mono',monospace; margin-bottom:16px;"></div>
 
   <div class="controls">
-    <div class="seg" id="periodSeg">
-      <button data-period="week" class="active">Неделя</button>
-      <button data-period="month">Месяц</button>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <div class="seg" id="periodSeg">
+        <button data-period="week" class="active">Неделя</button>
+        <button data-period="month">Месяц</button>
+      </div>
+      <select id="periodValue"></select>
     </div>
     <div class="tabs" id="groupTabs"></div>
   </div>
@@ -145,11 +176,11 @@
 
   <div class="panel" id="chartPanel">
     <div class="panel-head">
-      <h2 id="chartTitle">Динамика — партнёры</h2>
+      <h2 id="chartTitle">Динамика</h2>
       <div class="legend">
         <span><span class="dot" style="background:#1F6F5C"></span>Registrations</span>
         <span><span class="dot" style="background:#A9791C"></span>FTD</span>
-        <span><span class="dot" style="background:#5B6BB0"></span>GGR (/100, $)</span>
+        <span><span class="dot" style="background:#2A5FA5"></span>GGR (/100, $)</span>
       </div>
     </div>
     <div class="chart-wrap">
@@ -159,13 +190,20 @@
 
   <div class="panel">
     <div class="panel-head">
+      <h2>Ключевые инсайты</h2>
+    </div>
+    <div class="insights" id="insightsRow"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
       <h2 id="tableTitle">Партнёры</h2>
-      <span class="sub" id="tableHint" style="font-size:11px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;"></span>
+      <span id="tableHint" style="font-size:11px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;"></span>
     </div>
     <div style="overflow-x:auto;">
       <table id="dataTable"></table>
     </div>
-    <div class="foot-note">Spend подтягивается из <a href="#" onclick="return false;">Google Sheets</a> и сопоставляется по тегу/офферу. CPA рассчитывается автоматически: CPA REG = Spend / Registrations, CPA FTD = Spend / FTD.</div>
+    <div class="foot-note">Spend подтягивается из <a href="#" onclick="return false;">Google Sheets</a> по partner_id. CPA рассчитывается автоматически: CPA FTD = Spend / FTD.</div>
   </div>
 
 </div>
@@ -174,10 +212,23 @@
 <script>
 /* ---------------------------------------------------------------
    ЖИВЫЕ ДАННЫЕ
-   Читаем ./data/latest.json (снимок текущей и прошлой недели по группам)
-   и ./data/history.json (накопленная история по дням запуска сборщика).
+   Читаем ./data/latest.json (снимок недели по группам + список строк
+   по партнёрам/офферам) и ./data/history.json (накопленная история).
    Оба файла обновляет scripts/collect.py по расписанию GitHub Actions.
 ------------------------------------------------------------------*/
+
+const ICONS = {
+  people: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  card: '<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
+  dollar: '<circle cx="12" cy="12" r="10"/><path d="M12 6v12M15 9.5c0-1.4-1.3-2.5-3-2.5s-3 1.1-3 2.5 1.3 2 3 2.5 3 1.1 3 2.5-1.3 2.5-3 2.5-3-1.1-3-2.5"/>',
+  bank: '<line x1="3" y1="21" x2="21" y2="21"/><line x1="5" y1="21" x2="5" y2="10"/><line x1="19" y1="21" x2="19" y2="10"/><polygon points="12 2 21 8 3 8"/>',
+  target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  calc: '<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8" y2="11.01"/><line x1="12" y1="11" x2="12" y2="11.01"/><line x1="16" y1="11" x2="16" y2="11.01"/><line x1="8" y1="15" x2="8" y2="15.01"/><line x1="12" y1="15" x2="12" y2="15.01"/><line x1="16" y1="15" x2="16" y2="15.01"/>',
+  trendUp: '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  trendDown: '<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>',
+  star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+};
+function svgIcon(name){ return `<svg class="icon" viewBox="0 0 24 24">${ICONS[name]}</svg>`; }
 
 const GROUP_META = {
   partners: { title:'Партнёры', hasDashboard:true },
@@ -187,14 +238,17 @@ const GROUP_META = {
   inactive: { title:'Неактивные', hasDashboard:false },
 };
 
+let WEEKS = null;
+let MONTHS = null;
 let LATEST = null;
 let HISTORY = null;
-let state = { group:'partners' };
+let state = { periodType:'week', selectedKey:null, group:'partners' };
 let chartRef = null;
 
 function fmtInt(n){ return Math.round(n||0).toLocaleString('ru-RU'); }
 function fmtMoney(n){ return '$'+Math.round(n||0).toLocaleString('ru-RU'); }
 function fmtPct(n){ return (n||0).toFixed(1)+'%'; }
+function fmtDateShort(iso){ if(!iso) return ''; const d = iso.split(' ')[0]; return d.slice(8,10)+'.'+d.slice(5,7); }
 
 function delta(cur, prev){
   if(prev === undefined || prev === null) return null;
@@ -204,27 +258,51 @@ function delta(cur, prev){
 }
 
 function computeDerived(m){
+  if(!m) return {registrations:0, ftd:0, ggr:0, ngr:0, spend:null, crFtd:0, cpaFtd:null};
   const crFtd = m.registrations ? (m.ftd/m.registrations*100) : 0;
   const hasSpend = m.spend !== null && m.spend !== undefined;
   const cpaFtd = (hasSpend && m.ftd) ? (m.spend/m.ftd) : null;
-  const cpaReg = (hasSpend && m.registrations) ? (m.spend/m.registrations) : null;
-  return {...m, spend: hasSpend ? m.spend : null, crFtd, cpaFtd, cpaReg};
+  return {...m, spend: hasSpend ? m.spend : null, crFtd, cpaFtd};
 }
 
-async function loadData(){
+function periodStore(){ return state.periodType === 'week' ? WEEKS : MONTHS; }
+function availableKeys(){
+  const list = state.periodType === 'week' ? (LATEST.available_weeks||[]) : (LATEST.available_months||[]);
+  return list.slice().sort().reverse(); // новые сверху
+}
+function periodLabel(key, index){
+  if(state.periodType === 'week'){
+    const names = ['Эта неделя','Прошлая неделя','2 недели назад','3 недели назад'];
+    const snap = WEEKS[key];
+    const range = snap && snap._period ? `${fmtDateShort(snap._period.from)}–${fmtDateShort(snap._period.to)}` : key;
+    return `${names[index] || key} (${range})`;
+  } else {
+    const names = ['Этот месяц','Прошлый месяц'];
+    const [y,m] = key.split('-');
+    const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+    return `${names[index] || key} — ${monthNames[parseInt(m,10)-1]} ${y}`;
+  }
+}
+
+async function loadData(showSpinner){
   const banner = document.getElementById('statusBanner');
+  const btn = document.getElementById('refreshBtn');
+  if(showSpinner) btn.classList.add('spinning');
   try{
-    const [latestRes, historyRes] = await Promise.all([
+    const [latestRes, weeksRes, monthRes, historyRes] = await Promise.all([
       fetch('./data/latest.json', {cache:'no-store'}),
+      fetch('./data/weeks.json', {cache:'no-store'}),
+      fetch('./data/month.json', {cache:'no-store'}),
       fetch('./data/history.json', {cache:'no-store'}),
     ]);
     if(!latestRes.ok) throw new Error('latest.json недоступен (' + latestRes.status + ')');
     LATEST = await latestRes.json();
+    WEEKS = weeksRes.ok ? await weeksRes.json() : {};
+    MONTHS = monthRes.ok ? await monthRes.json() : {};
     HISTORY = historyRes.ok ? await historyRes.json() : {};
 
     const generated = new Date(LATEST.generated_at);
     document.getElementById('updatedAt').textContent = generated.toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
-    document.getElementById('sourceNote').textContent = 'источники: Alanbase API · Google Sheets (Spend)';
 
     const ageHours = (Date.now() - generated.getTime()) / 3600000;
     const staleGroups = LATEST.spend_stale_warnings || {};
@@ -235,16 +313,29 @@ async function loadData(){
       banner.textContent = `Данные собирались ${Math.round(ageHours)} ч назад — проверь, что автозапуск (GitHub Actions) отработал без ошибок.`;
     } else if(staleNames.length){
       banner.style.display = '';
-      banner.textContent = `Похоже, таблицу расходов давно не обновляли (без изменений ${Math.max(...Object.values(staleGroups))}+ дней): ${staleNames.join(', ')}. Проверь Spend за текущую неделю.`;
+      banner.textContent = `Похоже, таблицу расходов давно не обновляли: ${staleNames.join(', ')}. Проверь Spend за текущую неделю.`;
     } else {
       banner.style.display = 'none';
+    }
+
+    if(!state.selectedKey){
+      const keys = availableKeys();
+      state.selectedKey = keys[0];
     }
     render();
   }catch(err){
     banner.style.display = '';
     banner.textContent = 'Не смог загрузить данные: ' + err.message + '. Если сборщик ещё не запускался — запусти workflow вручную в разделе Actions.';
-    document.getElementById('sourceNote').textContent = 'нет данных';
+  } finally {
+    if(showSpinner) setTimeout(()=>btn.classList.remove('spinning'), 400);
   }
+}
+
+function renderPeriodValueSelect(){
+  const sel = document.getElementById('periodValue');
+  const keys = availableKeys();
+  if(!keys.includes(state.selectedKey)) state.selectedKey = keys[0];
+  sel.innerHTML = keys.map((k,i)=>`<option value="${k}" ${k===state.selectedKey?'selected':''}>${periodLabel(k,i)}</option>`).join('');
 }
 
 function renderTabs(){
@@ -260,17 +351,23 @@ function renderTabs(){
 }
 
 function renderKPIs(){
-  const g = LATEST.groups[state.group];
-  const cur = computeDerived(g.current);
-  const prev = computeDerived(g.previous);
+  const store = periodStore();
+  const keys = availableKeys();
+  const idx = keys.indexOf(state.selectedKey);
+  const curSnap = store[state.selectedKey];
+  const prevSnap = idx >= 0 && idx+1 < keys.length ? store[keys[idx+1]] : null;
+
+  const cur = computeDerived(curSnap ? curSnap[state.group] : null);
+  const prev = prevSnap ? computeDerived(prevSnap[state.group]) : null;
+  const deltaLabel = state.periodType === 'week' ? 'к пред. неделе' : 'к пред. месяцу';
 
   const cards = [
-    { label:'Registrations', val:fmtInt(cur.registrations), d:delta(cur.registrations, prev.registrations) },
-    { label:'FTD', val:fmtInt(cur.ftd), d:delta(cur.ftd, prev.ftd) },
-    { label:'GGR', val:fmtMoney(cur.ggr), d:delta(cur.ggr, prev.ggr) },
-    { label:'NGR', val:fmtMoney(cur.ngr), d:delta(cur.ngr, prev.ngr) },
-    { label:'CR FTD', val:fmtPct(cur.crFtd), d:delta(cur.crFtd, prev.crFtd) },
-    { label:'CPA FTD', val: cur.cpaFtd!=null ? '$'+cur.cpaFtd.toFixed(2) : '—', d: (cur.cpaFtd!=null&&prev.cpaFtd!=null) ? delta(cur.cpaFtd, prev.cpaFtd) : null, invert:true },
+    { label:'Registrations', val:fmtInt(cur.registrations), d: prev ? delta(cur.registrations, prev.registrations) : null, icon:'people', bg:'var(--accent-soft)', fg:'var(--accent)' },
+    { label:'FTD', val:fmtInt(cur.ftd), d: prev ? delta(cur.ftd, prev.ftd) : null, icon:'card', bg:'var(--amber-soft)', fg:'var(--amber)' },
+    { label:'GGR', val:fmtMoney(cur.ggr), d: prev ? delta(cur.ggr, prev.ggr) : null, icon:'dollar', bg:'var(--blue-soft)', fg:'var(--blue)' },
+    { label:'NGR', val:fmtMoney(cur.ngr), d: prev ? delta(cur.ngr, prev.ngr) : null, icon:'bank', bg:'var(--indigo-soft)', fg:'var(--indigo)' },
+    { label:'CR FTD', val:fmtPct(cur.crFtd), d: prev ? delta(cur.crFtd, prev.crFtd) : null, icon:'target', bg:'var(--accent-soft)', fg:'var(--accent)' },
+    { label:'CPA FTD', val: cur.cpaFtd!=null ? '$'+cur.cpaFtd.toFixed(2) : '—', d: (prev && cur.cpaFtd!=null && prev.cpaFtd!=null) ? delta(cur.cpaFtd, prev.cpaFtd) : null, invert:true, icon:'calc', bg:'#ECECEC', fg:'var(--ink-muted)' },
   ];
 
   const grid = document.getElementById('kpiGrid');
@@ -284,9 +381,12 @@ function renderKPIs(){
     const el = document.createElement('div');
     el.className = 'kpi ' + dir;
     el.innerHTML = `
-      <p class="kpi-label">${c.label}</p>
+      <div class="kpi-head">
+        <div class="kpi-icon" style="background:${c.bg}; color:${c.fg};">${svgIcon(c.icon)}</div>
+        <p class="kpi-label">${c.label}</p>
+      </div>
       <p class="kpi-value">${c.val}</p>
-      ${c.d ? `<div class="delta ${dir}">${dir==='up'?'▲':(dir==='down'?'▼':'—')} ${Math.abs(c.d.pct).toFixed(1)}% <span class="prev">к прошл. неделе</span></div>` : `<div class="delta"><span class="prev">нет данных за пред. период</span></div>`}
+      ${c.d ? `<div class="delta ${dir}">${svgIcon(dir==='up'?'trendUp':'trendDown')} ${Math.abs(c.d.pct).toFixed(1)}% <span class="prev">${deltaLabel}</span></div>` : `<div class="delta"><span class="prev">нет данных за пред. период</span></div>`}
     `;
     grid.appendChild(el);
   });
@@ -306,7 +406,6 @@ function renderChart(){
   if(chartRef) chartRef.destroy();
 
   if(hist.length < 2){
-    ctx.getContext('2d').clearRect(0,0,ctx.width,ctx.height);
     const wrap = ctx.parentElement;
     let note = wrap.querySelector('.empty-note');
     if(!note){ note = document.createElement('div'); note.className='empty-note'; wrap.appendChild(note); }
@@ -325,7 +424,7 @@ function renderChart(){
       datasets:[
         { label:'Registrations', data:hist.map(h=>h.registrations), borderColor:'#1F6F5C', backgroundColor:'rgba(31,111,92,0.08)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
         { label:'FTD', data:hist.map(h=>h.ftd), borderColor:'#A9791C', backgroundColor:'rgba(169,121,28,0.08)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
-        { label:'GGR (/100)', data:hist.map(h=>Math.round(h.ggr/100)), borderColor:'#5B6BB0', backgroundColor:'rgba(91,107,176,0.06)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
+        { label:'GGR (/100)', data:hist.map(h=>Math.round(h.ggr/100)), borderColor:'#2A5FA5', backgroundColor:'rgba(42,95,165,0.06)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
       ]
     },
     options:{
@@ -339,43 +438,102 @@ function renderChart(){
   });
 }
 
+function renderInsights(){
+  const row = document.getElementById('insightsRow');
+  const hist = (HISTORY && HISTORY[state.group]) ? HISTORY[state.group] : [];
+  if(hist.length < 2){
+    row.innerHTML = `<div class="insights-empty">Инсайты появятся, когда накопится история минимум за 2 запуска сборщика.</div>`;
+    return;
+  }
+  const maxReg = hist.reduce((a,b)=> b.registrations > a.registrations ? b : a);
+  const maxFtd = hist.reduce((a,b)=> b.ftd > a.ftd ? b : a);
+  const first = hist[0], last = hist[hist.length-1];
+  const ggrGrowth = first.ggr ? ((last.ggr-first.ggr)/first.ggr*100) : (last.ggr>0?100:0);
+
+  const fmtDate = d => d.slice(5).split('-').reverse().join('.');
+
+  row.innerHTML = `
+    <div class="insight">
+      <div class="insight-icon" style="background:var(--accent-soft); color:var(--accent);">${svgIcon('people')}</div>
+      <div><p class="insight-label">Максимум регистраций</p><p class="insight-value">${fmtDate(maxReg.date)} (${fmtInt(maxReg.registrations)})</p></div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon" style="background:var(--amber-soft); color:var(--amber);">${svgIcon('star')}</div>
+      <div><p class="insight-label">Пик FTD</p><p class="insight-value">${fmtDate(maxFtd.date)} (${fmtInt(maxFtd.ftd)})</p></div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon" style="background:${ggrGrowth>=0?'var(--accent-soft)':'var(--danger-soft)'}; color:${ggrGrowth>=0?'var(--accent)':'var(--danger)'};">${svgIcon(ggrGrowth>=0?'trendUp':'trendDown')}</div>
+      <div><p class="insight-label">Рост GGR</p><p class="insight-value">${ggrGrowth>=0?'+':''}${ggrGrowth.toFixed(1)}% за период</p></div>
+    </div>
+  `;
+}
+
 function renderTable(){
   const meta = GROUP_META[state.group];
-  const g = LATEST.groups[state.group];
-  const cur = computeDerived(g.current);
+  const store = periodStore();
+  const snap = store[state.selectedKey];
+  const rows = (snap && snap[state.group] && snap[state.group].rows) || [];
 
   document.getElementById('tableTitle').textContent = meta.title;
-  document.getElementById('tableHint').textContent = 'разбивка по отдельным партнёрам — следующий шаг';
+  document.getElementById('tableHint').textContent = rows.length ? `${rows.length} строк` : '';
 
   const table = document.getElementById('dataTable');
+
+  if(!rows.length){
+    table.innerHTML = `<tbody><tr><td style="padding:16px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace; font-size:12.5px;">Нет данных за этот период для группы «${meta.title}».</td></tr></tbody>`;
+    return;
+  }
+
   table.innerHTML = `
     <thead><tr>
-      <th>Группа</th>
+      <th>Партнёр</th>
       <th class="num-h">Registrations</th><th class="num-h">FTD</th>
       <th class="num-h">GGR</th><th class="num-h">NGR</th>
       <th class="num-h">CR FTD</th><th class="num-h">Spend</th><th class="num-h">CPA FTD</th>
     </tr></thead>
     <tbody>
-      <tr>
-        <td>${meta.title} (все теги группы)</td>
-        <td class="num">${fmtInt(cur.registrations)}</td>
-        <td class="num">${fmtInt(cur.ftd)}</td>
-        <td class="num">${fmtMoney(cur.ggr)}</td>
-        <td class="num">${fmtMoney(cur.ngr)}</td>
-        <td class="num">${fmtPct(cur.crFtd)}</td>
-        <td class="num">${cur.spend?fmtMoney(cur.spend):'<span class="muted-cell">0</span>'}</td>
-        <td class="num">${cur.cpaFtd!=null?('$'+cur.cpaFtd.toFixed(2)):'<span class="muted-cell">—</span>'}</td>
-      </tr>
+      ${rows.map(r=>`
+        <tr>
+          <td>(${r.partner_id}) ${r.partner_name}${r.offer_name ? `<span class="offer-tag">${r.offer_name}</span>` : ''}</td>
+          <td class="num">${fmtInt(r.registrations)}</td>
+          <td class="num">${fmtInt(r.ftd)}</td>
+          <td class="num">${fmtMoney(r.ggr)}</td>
+          <td class="num">${fmtMoney(r.ngr)}</td>
+          <td class="num">${fmtPct(r.cr_ftd)}</td>
+          <td class="num">${r.spend!=null ? (r.spend?fmtMoney(r.spend):'<span class="muted-cell">0</span>') : '<span class="muted-cell">—</span>'}</td>
+          <td class="num">${r.cpa_ftd!=null ? ('$'+r.cpa_ftd.toFixed(2)) : '<span class="muted-cell">—</span>'}</td>
+        </tr>
+      `).join('')}
     </tbody>`;
 }
 
 function render(){
+  renderPeriodValueSelect();
   renderTabs();
   renderKPIs();
   renderChart();
+  renderInsights();
   renderTable();
 }
 
-loadData();
+document.getElementById('periodSeg').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  document.querySelectorAll('#periodSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  state.periodType = btn.dataset.period;
+  state.selectedKey = null; // подхватит первый доступный ключ нового типа в render()
+  render();
+});
+
+document.getElementById('periodValue').addEventListener('change', (e)=>{
+  state.selectedKey = e.target.value;
+  render();
+});
+
+document.getElementById('refreshBtn').addEventListener('click', ()=> loadData(true));
+
+loadData(false);
 </script>
-</body></html>
+</body>
+</html>
