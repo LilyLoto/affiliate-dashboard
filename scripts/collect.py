@@ -1,7 +1,8 @@
 """
 Собирает статистику из Alanbase API + Google Sheets, считает метрики
-по группам (partners/seo/inhouse/cc/inactive) и сохраняет
-docs/data/latest.json + docs/data/history.json.
+по группам (partners/seo/inhouse/cc/inactive) — как по сумме группы,
+так и в разбивке по каждому партнёру (и по офферам для составных
+партнёров) — и сохраняет docs/data/latest.json + docs/data/history.json.
 
 ВАЖНО про Alanbase API:
   /admin/statistic/common      — готовая сводка, но НЕ умеет фильтровать
@@ -9,8 +10,12 @@ docs/data/latest.json + docs/data/history.json.
   /admin/statistic/conversions — отдаёт список конверсий поштучно, умеет
                                   фильтровать по goal_keys[], но агрегацию
                                   (по партнёру/офферу) нужно считать самим.
-  Поэтому здесь используется только /conversions, а суммы по группам
-  считаются в Python из списка конверсий.
+  Поэтому здесь используется только /conversions, а суммы считаются
+  в Python из списка конверсий.
+
+  Поле "value" в конверсиях НЕ конвертируется по currency_code — оно
+  приходит в исходной валюте продукта (для этого аккаунта — KZT),
+  конвертация в USD сделана вручную ниже (см. CURRENCY_RATES_TO_USD).
 
   Лимиты Alanbase: макс. 1000 записей на страницу, макс. 30 запросов/мин.
 
@@ -117,17 +122,21 @@ def read_sheet_tab(gid):
 
 
 def load_partner_groups():
-    mapping = {}
+    """Вкладка 'Партнёры': {partner_id: group}, {partner_id: partner_name}."""
+    group_map = {}
+    name_map = {}
     for row in read_sheet_tab(GID_PARTNERS):
         pid = row.get("partner_id", "")
         if not pid:
             continue
+        if row.get("partner_name"):
+            name_map[pid] = row["partner_name"]
         group = normalize_group(row.get("группа", ""))
         if group is None:
             print(f"[warn] partner_id {pid}: неизвестная группа '{row.get('группа')}' — пропущен")
             continue
-        mapping[pid] = group
-    return mapping
+        group_map[pid] = group
+    return group_map, name_map
 
 
 def load_partner_offer_overrides():
@@ -168,6 +177,7 @@ def load_spend_rows():
             "period_to": period_to,
             "partner_id": pid,
             "offer_id": row.get("offer_id", "").strip(),
+            "partner_name": row.get("partner_name", ""),
             "spend": spend,
         })
     return rows
@@ -207,7 +217,7 @@ def _request_page(goal_key, date_from, date_to, page):
         except urllib.error.HTTPError as e:
             last_error = e
             if e.code in RETRYABLE_HTTP_CODES and attempt < MAX_RETRIES:
-                backoff = 3 * (2 ** (attempt - 1))  # 3s, 6s, 12s, 24s...
+                backoff = 3 * (2 ** (attempt - 1))
                 print(f"  [warn] {goal_key} стр.{page}: HTTP {e.code}, повтор через {backoff}с (попытка {attempt}/{MAX_RETRIES})")
                 time.sleep(backoff)
                 continue
@@ -225,8 +235,8 @@ def _request_page(goal_key, date_from, date_to, page):
 
 def fetch_conversions(goal_key, date_from, date_to):
     """
-    Тянет ВСЕ конверсии по одной цели за период (с пагинацией),
-    возвращает список словарей {partner_id, offer_id, value}.
+    Тянет ВСЕ конверсии по одной цели за период (с пагинацией).
+    Возвращает список словарей {partner_id, partner_name, offer_id, offer_name, value}.
     Автоматически повторяет запрос при временных сбоях сервера (502/503/504).
     """
     results = []
@@ -243,7 +253,9 @@ def fetch_conversions(goal_key, date_from, date_to):
             value_usd = to_usd(raw_value, currency)
             results.append({
                 "partner_id": str(partner.get("id", "")),
+                "partner_name": partner.get("full_name") or partner.get("email") or "",
                 "offer_id": str(offer.get("id", "")),
+                "offer_name": offer.get("name") or "",
                 "value": value_usd,
             })
 
@@ -259,7 +271,7 @@ def fetch_conversions(goal_key, date_from, date_to):
 
 
 # ---------------------------------------------------------------
-# СБОРКА МЕТРИК ЗА ПЕРИОД
+# СБОРКА МЕТРИК ЗА ПЕРИОД (по группам и в разбивке по партнёрам/офферам)
 # ---------------------------------------------------------------
 
 def route_to_group(pid, oid, partner_groups, overrides, override_partner_ids):
@@ -268,127 +280,273 @@ def route_to_group(pid, oid, partner_groups, overrides, override_partner_ids):
     return partner_groups.get(pid)
 
 
+def row_key(pid, oid, override_partner_ids):
+    """Составные партнёры -> отдельная строка на каждый оффер. Обычные -> одна строка на партнёра."""
+    if pid in override_partner_ids:
+        return ("offer", pid, oid)
+    return ("partner", pid)
+
+
 def build_metric_aggregates(date_from, date_to, partner_groups, overrides, override_partner_ids):
     aggregates = {g: {"registrations": 0, "ftd": 0, "ggr": 0.0} for g in GROUPS}
+    rows = {g: {} for g in GROUPS}
     unknown_partners = set()
 
     for goal, field in [("registration", "registrations"), ("ftd", "ftd"), ("ggr", "ggr")]:
         conversions = fetch_conversions(goal, date_from, date_to)
         print(f"  {goal}: получено {len(conversions)} конверсий")
-        for row in conversions:
-            group = route_to_group(row["partner_id"], row["offer_id"], partner_groups, overrides, override_partner_ids)
+        for c in conversions:
+            pid, oid = c["partner_id"], c["offer_id"]
+            group = route_to_group(pid, oid, partner_groups, overrides, override_partner_ids)
             if not group:
-                unknown_partners.add(row["partner_id"])
+                unknown_partners.add(pid)
                 continue
+
             if field == "ggr":
-                aggregates[group]["ggr"] += row["value"]
+                aggregates[group]["ggr"] += c["value"]
             else:
                 aggregates[group][field] += 1
+
+            key = row_key(pid, oid, override_partner_ids)
+            row = rows[group].setdefault(key, {
+                "partner_id": pid, "partner_name": c["partner_name"],
+                "offer_id": oid if key[0] == "offer" else None,
+                "offer_name": c["offer_name"] if key[0] == "offer" else None,
+                "registrations": 0, "ftd": 0, "ggr": 0.0,
+            })
+            if field == "ggr":
+                row["ggr"] += c["value"]
+            else:
+                row[field] += 1
 
     if unknown_partners:
         print(f"[info] партнёры без группы (нет в 'Партнёры'): {sorted(unknown_partners)}")
 
     for g in aggregates:
         aggregates[g]["ggr"] = round(aggregates[g]["ggr"], 2)
-    return aggregates
+        for row in rows[g].values():
+            row["ggr"] = round(row["ggr"], 2)
+
+    return aggregates, rows
 
 
-def spend_for_period(spend_rows, date_from, date_to, partner_groups, overrides):
+def spend_for_period(spend_rows, date_from, date_to, partner_groups, overrides, override_partner_ids):
     want_from = date_from.split(" ")[0]
     want_to = date_to.split(" ")[0]
-    aggregates = {g: 0.0 for g in GROUPS}
+    group_totals = {g: 0.0 for g in GROUPS}
+    row_totals = {g: {} for g in GROUPS}
     matched_any = False
-    for row in spend_rows:
-        if row["period_from"] != want_from or row["period_to"] != want_to:
+
+    for r in spend_rows:
+        if r["period_from"] != want_from or r["period_to"] != want_to:
             continue
         matched_any = True
-        pid, oid = row["partner_id"], row["offer_id"]
+        pid, oid = r["partner_id"], r["offer_id"]
         default_group = partner_groups.get(pid)
         group = overrides.get((pid, oid), default_group) if oid else default_group
         if not group:
             continue
-        aggregates[group] += row["spend"]
-    return {g: round(v, 2) for g, v in aggregates.items()}, matched_any
+        group_totals[group] += r["spend"]
+        key = row_key(pid, oid, override_partner_ids)
+        row_totals[group][key] = row_totals[group].get(key, 0.0) + r["spend"]
+
+    group_totals = {g: round(v, 2) for g, v in group_totals.items()}
+    for g in row_totals:
+        row_totals[g] = {k: round(v, 2) for k, v in row_totals[g].items()}
+    return group_totals, row_totals, matched_any
 
 
 def week_bounds(weeks_ago=0):
     today = datetime.date.today()
     monday = today - datetime.timedelta(days=today.weekday() + 7 * weeks_ago)
     end = monday + datetime.timedelta(days=6) if weeks_ago > 0 else today
-    return monday.strftime("%Y-%m-%d 00:00"), end.strftime("%Y-%m-%d 23:59")
+    return monday.strftime("%Y-%m-%d 00:00"), end.strftime("%Y-%m-%d 23:59"), monday.isoformat()
+
+
+def month_bounds(months_ago=0):
+    today = datetime.date.today()
+    y, m = today.year, today.month
+    for _ in range(months_ago):
+        m -= 1
+        if m == 0:
+            m = 12
+            y -= 1
+    first = datetime.date(y, m, 1)
+    if months_ago == 0:
+        last_day = today
+    else:
+        if m == 12:
+            next_month_first = datetime.date(y + 1, 1, 1)
+        else:
+            next_month_first = datetime.date(y, m + 1, 1)
+        last_day = next_month_first - datetime.timedelta(days=1)
+    month_id = f"{y}-{m:02d}"
+    return first.strftime("%Y-%m-%d 00:00"), last_day.strftime("%Y-%m-%d 23:59"), month_id
+
+
+def build_rows_list(metric_rows, spend_rows, spend_matched, partner_names, group):
+    """Сливает метрики и Spend в единый список строк для дашборда, с производными метриками."""
+    all_keys = set(metric_rows.get(group, {}).keys()) | set(spend_rows.get(group, {}).keys())
+    result = []
+    for key in all_keys:
+        m = metric_rows.get(group, {}).get(key, {})
+        spend = spend_rows.get(group, {}).get(key)
+        if spend is None:
+            spend = 0.0 if spend_matched else None
+
+        if key[0] == "partner":
+            pid = key[1]
+            oid = None
+            oname = None
+        else:
+            pid = key[1]
+            oid = key[2]
+            oname = m.get("offer_name")
+
+        name = m.get("partner_name") or partner_names.get(pid, "") or f"partner {pid}"
+        reg = m.get("registrations", 0)
+        ftd = m.get("ftd", 0)
+        ggr = m.get("ggr", 0.0)
+        ngr = round(ggr * 0.6, 2)
+        cr_ftd = round(ftd / reg * 100, 2) if reg else 0.0
+        cpa_ftd = round(spend / ftd, 2) if (spend is not None and ftd) else None
+
+        result.append({
+            "partner_id": pid,
+            "partner_name": name,
+            "offer_id": oid,
+            "offer_name": oname,
+            "registrations": reg,
+            "ftd": ftd,
+            "ggr": ggr,
+            "ngr": ngr,
+            "spend": spend,
+            "cr_ftd": cr_ftd,
+            "cpa_ftd": cpa_ftd,
+        })
+
+    result.sort(key=lambda r: r["registrations"], reverse=True)
+    return result
+
+
+WEEKS_TO_KEEP = 4
+MONTHS_TO_KEEP = 2
+
+
+def load_json_file(path):
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def save_json_file(path, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def collect_period_snapshot(date_from, date_to, partner_groups, overrides, override_partner_ids, spend_rows, partner_names):
+    """Считает полный снимок (метрики + строки по партнёрам) для одного произвольного периода."""
+    metrics, rows_by_group = build_metric_aggregates(date_from, date_to, partner_groups, overrides, override_partner_ids)
+    spend_totals, spend_rows_by_group, spend_matched = spend_for_period(
+        spend_rows, date_from, date_to, partner_groups, overrides, override_partner_ids)
+
+    snapshot = {}
+    for g in GROUPS:
+        cur = dict(metrics[g])
+        cur["spend"] = spend_totals.get(g, 0.0) if spend_matched else None
+        cur["ngr"] = round(cur["ggr"] * 0.6, 2)  # приближение, см. README
+        cur["rows"] = build_rows_list(rows_by_group, spend_rows_by_group, spend_matched, partner_names, g)
+        snapshot[g] = cur
+    snapshot["_period"] = {"from": date_from, "to": date_to}
+    snapshot["_spend_matched"] = spend_matched
+    return snapshot
 
 
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    cur_from, cur_to = week_bounds(0)
-    prev_from, prev_to = week_bounds(1)
-    print(f"Текущая неделя: {cur_from} .. {cur_to}")
-    print(f"Прошлая неделя: {prev_from} .. {prev_to}")
-
-    partner_groups = load_partner_groups()
+    partner_groups, partner_names = load_partner_groups()
     overrides, override_partner_ids = load_partner_offer_overrides()
     spend_rows = load_spend_rows()
     print(f"Загружено: {len(partner_groups)} партнёров, {len(overrides)} офферов-исключений, "
           f"{len(override_partner_ids)} составных партнёров, {len(spend_rows)} строк расходов")
 
-    print("Тянем конверсии за текущую неделю...")
-    current_metrics = build_metric_aggregates(cur_from, cur_to, partner_groups, overrides, override_partner_ids)
-    print("Тянем конверсии за прошлую неделю...")
-    previous_metrics = build_metric_aggregates(prev_from, prev_to, partner_groups, overrides, override_partner_ids)
+    weeks_path = os.path.join(DATA_DIR, "weeks.json")
+    month_path = os.path.join(DATA_DIR, "month.json")
+    weeks_cache = load_json_file(weeks_path)
+    month_cache = load_json_file(month_path)
 
-    current_spend, cur_spend_matched = spend_for_period(spend_rows, cur_from, cur_to, partner_groups, overrides)
-    previous_spend, prev_spend_matched = spend_for_period(spend_rows, prev_from, prev_to, partner_groups, overrides)
+    # ---- НЕДЕЛИ: текущая всегда пересчитывается, прошлые — только если их ещё нет в кэше ----
+    week_keys_wanted = []
+    for weeks_ago in range(WEEKS_TO_KEEP):
+        date_from, date_to, week_id = week_bounds(weeks_ago)
+        week_keys_wanted.append(week_id)
+        if weeks_ago == 0 or week_id not in weeks_cache:
+            label = "текущая" if weeks_ago == 0 else "первый расчёт, дальше — из кэша"
+            print(f"Считаем неделю {week_id} ({label})...")
+            weeks_cache[week_id] = collect_period_snapshot(
+                date_from, date_to, partner_groups, overrides, override_partner_ids, spend_rows, partner_names)
+        else:
+            print(f"Неделя {week_id} уже в кэше — пропускаем повторный запрос к Alanbase")
 
-    if not cur_spend_matched:
-        print(f"[warn] в 'Расходы' нет строк с периодом {cur_from.split(' ')[0]}..{cur_to.split(' ')[0]} — Spend за эту неделю будет 0")
+    for key in list(weeks_cache.keys()):
+        if key not in week_keys_wanted:
+            del weeks_cache[key]
 
-    latest_groups = {}
-    for g in GROUPS:
-        cur = dict(current_metrics[g])
-        cur["spend"] = current_spend.get(g, 0.0)
-        cur["ngr"] = round(cur["ggr"] * 0.6, 2)  # приближение, см. README
+    save_json_file(weeks_path, weeks_cache)
+    print("Записан docs/data/weeks.json")
 
-        prev = dict(previous_metrics[g])
-        prev["spend"] = previous_spend.get(g, 0.0) if prev_spend_matched else None
-        prev["ngr"] = round(prev["ggr"] * 0.6, 2)
+    # ---- МЕСЯЦЫ: текущий всегда пересчитывается, прошлый — только если его ещё нет в кэше ----
+    month_keys_wanted = []
+    for months_ago in range(MONTHS_TO_KEEP):
+        date_from, date_to, month_id = month_bounds(months_ago)
+        month_keys_wanted.append(month_id)
+        if months_ago == 0 or month_id not in month_cache:
+            label = "текущий" if months_ago == 0 else "первый расчёт, дальше — из кэша"
+            print(f"Считаем месяц {month_id} ({label})...")
+            month_cache[month_id] = collect_period_snapshot(
+                date_from, date_to, partner_groups, overrides, override_partner_ids, spend_rows, partner_names)
+        else:
+            print(f"Месяц {month_id} уже в кэше — пропускаем повторный запрос к Alanbase")
 
-        latest_groups[g] = {"current": cur, "previous": prev}
+    for key in list(month_cache.keys()):
+        if key not in month_keys_wanted:
+            del month_cache[key]
 
-    latest = {
-        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
-        "period": {"from": cur_from, "to": cur_to},
-        "previous_period": {"from": prev_from, "to": prev_to},
-        "groups": latest_groups,
-        "spend_stale_warnings": {},
-    }
+    save_json_file(month_path, month_cache)
+    print("Записан docs/data/month.json")
 
-    with open(os.path.join(DATA_DIR, "latest.json"), "w", encoding="utf-8") as f:
-        json.dump(latest, f, ensure_ascii=False, indent=2)
-    print("Записан docs/data/latest.json")
+    # ---- history.json для графика — берём из уже посчитанной текущей недели, без доп. запросов ----
+    current_week_id = week_keys_wanted[0]
+    current_week_snapshot = weeks_cache[current_week_id]
 
     history_path = os.path.join(DATA_DIR, "history.json")
-    history = {}
-    if os.path.exists(history_path):
-        with open(history_path, "r", encoding="utf-8") as f:
-            history = json.load(f)
-
+    history = load_json_file(history_path)
     today_str = datetime.date.today().isoformat()
     for g in GROUPS:
         history.setdefault(g, [])
         points = [p for p in history[g] if p["date"] != today_str]
         points.append({
             "date": today_str,
-            "registrations": current_metrics[g]["registrations"],
-            "ftd": current_metrics[g]["ftd"],
-            "ggr": current_metrics[g]["ggr"],
-            "spend": current_spend.get(g, 0.0),
+            "registrations": current_week_snapshot[g]["registrations"],
+            "ftd": current_week_snapshot[g]["ftd"],
+            "ggr": current_week_snapshot[g]["ggr"],
+            "spend": current_week_snapshot[g]["spend"] if current_week_snapshot[g]["spend"] is not None else 0.0,
         })
         history[g] = points[-HISTORY_MAX_POINTS:]
-
-    with open(history_path, "w", encoding="utf-8") as f:
-        json.dump(history, f, ensure_ascii=False, indent=2)
+    save_json_file(history_path, history)
     print("Записан docs/data/history.json")
+
+    # ---- latest.json — только метаданные: что доступно и когда обновлялось ----
+    latest = {
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "available_weeks": sorted(week_keys_wanted, reverse=True),
+        "available_months": sorted(month_keys_wanted, reverse=True),
+        "spend_stale_warnings": {},
+    }
+    save_json_file(os.path.join(DATA_DIR, "latest.json"), latest)
+    print("Записан docs/data/latest.json")
 
 
 if __name__ == "__main__":
