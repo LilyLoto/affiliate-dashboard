@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-23T10:49:24.234333Z",
+  "generated_at": "2026-07-23T12:30:53.184945Z",
   "period": {
     "from": "2026-07-20 00:00",
     "to": "2026-07-23 23:59"
@@ -11,82 +11,82 @@
   "groups": {
     "partners": {
       "current": {
-        "registrations": 587,
-        "ftd": 209,
-        "ggr": 3635564.0,
+        "registrations": 600,
+        "ftd": 212,
+        "ggr": 8120.0,
         "spend": 0.0,
-        "ngr": 2181338.4
+        "ngr": 4872.0
       },
       "previous": {
         "registrations": 694,
         "ftd": 269,
-        "ggr": 12616350.0,
+        "ggr": 26998.99,
         "spend": null,
-        "ngr": 7569810.0
+        "ngr": 16199.39
       }
     },
     "seo": {
       "current": {
-        "registrations": 47,
-        "ftd": 32,
-        "ggr": 13666209.0,
+        "registrations": 49,
+        "ftd": 35,
+        "ggr": 30472.14,
         "spend": 0.0,
-        "ngr": 8199725.4
+        "ngr": 18283.28
       },
       "previous": {
         "registrations": 66,
         "ftd": 53,
-        "ggr": 35868060.0,
+        "ggr": 76757.65,
         "spend": null,
-        "ngr": 21520836.0
+        "ngr": 46054.59
       }
     },
     "inhouse": {
       "current": {
-        "registrations": 130,
-        "ftd": 35,
-        "ggr": 745249.0,
+        "registrations": 133,
+        "ftd": 37,
+        "ggr": 1525.7,
         "spend": 0.0,
-        "ngr": 447149.4
+        "ngr": 915.42
       },
       "previous": {
         "registrations": 238,
         "ftd": 79,
-        "ggr": 865482.0,
+        "ggr": 1852.13,
         "spend": null,
-        "ngr": 519289.2
+        "ngr": 1111.28
       }
     },
     "cc": {
       "current": {
         "registrations": 4,
         "ftd": 3,
-        "ggr": 21335.0,
+        "ggr": 46.73,
         "spend": 0.0,
-        "ngr": 12801.0
+        "ngr": 28.04
       },
       "previous": {
         "registrations": 3,
         "ftd": 3,
-        "ggr": 30075.0,
+        "ggr": 64.36,
         "spend": null,
-        "ngr": 18045.0
+        "ngr": 38.62
       }
     },
     "inactive": {
       "current": {
         "registrations": 10,
         "ftd": 7,
-        "ggr": 526177.0,
+        "ggr": 1115.88,
         "spend": 0.0,
-        "ngr": 315706.2
+        "ngr": 669.53
       },
       "previous": {
         "registrations": 1,
         "ftd": 2,
-        "ggr": 1710583.0,
+        "ggr": 3660.65,
         "spend": null,
-        "ngr": 1026349.8
+        "ngr": 2196.39
       }
     }
   },
