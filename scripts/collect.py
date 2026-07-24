@@ -158,14 +158,20 @@ def load_partner_offer_overrides():
 
 def load_spend_rows():
     rows = []
+    raw_samples = []
     for row in read_sheet_tab(GID_SPEND):
         pid = row.get("partner_id", "")
         if not pid:
             continue
-        period_from = row.get("период_с", "")
-        period_to = row.get("период_по", "")
+        raw_from = row.get("период_с", "")
+        raw_to = row.get("период_по", "")
+        period_from = normalize_date(raw_from)
+        period_to = normalize_date(raw_to)
+        if len(raw_samples) < 3:
+            raw_samples.append((raw_from, period_from, raw_to, period_to))
         if not period_from or not period_to:
-            print(f"[warn] Расходы: у partner_id {pid} (offer {row.get('offer_id','—')}) нет дат периода — строка пропущена")
+            print(f"[warn] Расходы: у partner_id {pid} (offer {row.get('offer_id','—')}) не распознал дату периода "
+                  f"('{raw_from}' / '{raw_to}') — строка пропущена")
             continue
         raw_spend = (row.get("spend", "") or "0").replace("$", "").replace(",", "").strip()
         try:
@@ -180,6 +186,8 @@ def load_spend_rows():
             "partner_name": row.get("partner_name", ""),
             "spend": spend,
         })
+    if raw_samples:
+        print(f"[debug] Пример разбора дат из 'Расходы' (сырое -> распознанное): {raw_samples}")
     return rows
 
 
@@ -350,6 +358,10 @@ def spend_for_period(spend_rows, date_from, date_to, partner_groups, overrides, 
         key = row_key(pid, oid, override_partner_ids)
         row_totals[group][key] = row_totals[group].get(key, 0.0) + r["spend"]
 
+    if not matched_any and spend_rows:
+        available_periods = sorted(set(f"{r['period_from']}..{r['period_to']}" for r in spend_rows))
+        print(f"[debug] Spend: искали период {want_from}..{want_to}, в таблице есть периоды: {available_periods}")
+
     group_totals = {g: round(v, 2) for g, v in group_totals.items()}
     for g in row_totals:
         row_totals[g] = {k: round(v, 2) for k, v in row_totals[g].items()}
@@ -363,25 +375,24 @@ def week_bounds(weeks_ago=0):
     return monday.strftime("%Y-%m-%d 00:00"), end.strftime("%Y-%m-%d 23:59"), monday.isoformat()
 
 
-def month_bounds(months_ago=0):
-    today = datetime.date.today()
-    y, m = today.year, today.month
-    for _ in range(months_ago):
-        m -= 1
-        if m == 0:
-            m = 12
-            y -= 1
-    first = datetime.date(y, m, 1)
-    if months_ago == 0:
-        last_day = today
-    else:
-        if m == 12:
-            next_month_first = datetime.date(y + 1, 1, 1)
-        else:
-            next_month_first = datetime.date(y, m + 1, 1)
-        last_day = next_month_first - datetime.timedelta(days=1)
-    month_id = f"{y}-{m:02d}"
-    return first.strftime("%Y-%m-%d 00:00"), last_day.strftime("%Y-%m-%d 23:59"), month_id
+_DATE_FORMATS = ["%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d", "%d-%m-%Y"]
+
+
+def normalize_date(raw):
+    """
+    Приводит дату из таблицы к единому виду YYYY-MM-DD, независимо от того,
+    как Google Sheets её экспортировал (текст, локальный формат, и т.д.).
+    Возвращает None, если распознать не удалось.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.datetime.strptime(raw, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return None
 
 
 def build_rows_list(metric_rows, spend_rows, spend_matched, partner_names, group):
@@ -429,8 +440,8 @@ def build_rows_list(metric_rows, spend_rows, spend_matched, partner_names, group
     return result
 
 
-WEEKS_TO_KEEP = 4
-MONTHS_TO_KEEP = 2
+WEEKS_TO_KEEP = 8  # "месяц" на фронтенде считается как сумма 4 недель — этот запас нужен,
+                    # чтобы для "прошлого месяца" тоже было 4 недели-предшественницы
 
 
 def load_json_file(path):
@@ -473,9 +484,7 @@ def main():
           f"{len(override_partner_ids)} составных партнёров, {len(spend_rows)} строк расходов")
 
     weeks_path = os.path.join(DATA_DIR, "weeks.json")
-    month_path = os.path.join(DATA_DIR, "month.json")
     weeks_cache = load_json_file(weeks_path)
-    month_cache = load_json_file(month_path)
 
     # ---- НЕДЕЛИ: текущая всегда пересчитывается, прошлые — только если их ещё нет в кэше ----
     week_keys_wanted = []
@@ -496,26 +505,6 @@ def main():
 
     save_json_file(weeks_path, weeks_cache)
     print("Записан docs/data/weeks.json")
-
-    # ---- МЕСЯЦЫ: текущий всегда пересчитывается, прошлый — только если его ещё нет в кэше ----
-    month_keys_wanted = []
-    for months_ago in range(MONTHS_TO_KEEP):
-        date_from, date_to, month_id = month_bounds(months_ago)
-        month_keys_wanted.append(month_id)
-        if months_ago == 0 or month_id not in month_cache:
-            label = "текущий" if months_ago == 0 else "первый расчёт, дальше — из кэша"
-            print(f"Считаем месяц {month_id} ({label})...")
-            month_cache[month_id] = collect_period_snapshot(
-                date_from, date_to, partner_groups, overrides, override_partner_ids, spend_rows, partner_names)
-        else:
-            print(f"Месяц {month_id} уже в кэше — пропускаем повторный запрос к Alanbase")
-
-    for key in list(month_cache.keys()):
-        if key not in month_keys_wanted:
-            del month_cache[key]
-
-    save_json_file(month_path, month_cache)
-    print("Записан docs/data/month.json")
 
     # ---- history.json для графика — берём из уже посчитанной текущей недели, без доп. запросов ----
     current_week_id = week_keys_wanted[0]
@@ -542,7 +531,6 @@ def main():
     latest = {
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
         "available_weeks": sorted(week_keys_wanted, reverse=True),
-        "available_months": sorted(month_keys_wanted, reverse=True),
         "spend_stale_warnings": {},
     }
     save_json_file(os.path.join(DATA_DIR, "latest.json"), latest)
