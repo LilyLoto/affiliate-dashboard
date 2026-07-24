@@ -239,7 +239,6 @@ const GROUP_META = {
 };
 
 let WEEKS = null;
-let MONTHS = null;
 let LATEST = null;
 let HISTORY = null;
 let state = { periodType:'week', selectedKey:null, group:'partners' };
@@ -265,22 +264,76 @@ function computeDerived(m){
   return {...m, spend: hasSpend ? m.spend : null, crFtd, cpaFtd};
 }
 
-function periodStore(){ return state.periodType === 'week' ? WEEKS : MONTHS; }
-function availableKeys(){
-  const list = state.periodType === 'week' ? (LATEST.available_weeks||[]) : (LATEST.available_months||[]);
-  return list.slice().sort().reverse(); // новые сверху
+function round2(n){ return Math.round((n||0)*100)/100; }
+
+function weekKeysSorted(){ return (LATEST.available_weeks||[]).slice().sort().reverse(); }
+
+function monthBuckets(){
+  // buckets[0] = 4 самые свежие недели ("этот месяц"), buckets[1] = следующие 4 ("прошлый месяц")
+  const weeks = weekKeysSorted();
+  const buckets = [];
+  for(let i=0; i+4<=weeks.length; i+=4) buckets.push(weeks.slice(i, i+4));
+  return buckets;
 }
+
+function sumGroupSnapshots(weekKeys, group){
+  let reg=0, ftd=0, ggr=0, spend=0, spendKnown=true;
+  const rowsMap = {};
+  weekKeys.forEach(wk=>{
+    const snap = WEEKS[wk] && WEEKS[wk][group];
+    if(!snap) return;
+    reg += snap.registrations||0;
+    ftd += snap.ftd||0;
+    ggr += snap.ggr||0;
+    if(snap.spend===null || snap.spend===undefined) spendKnown=false; else spend += snap.spend;
+    (snap.rows||[]).forEach(r=>{
+      const key = r.offer_id ? (r.partner_id+'|'+r.offer_id) : r.partner_id;
+      if(!rowsMap[key]) rowsMap[key] = {partner_id:r.partner_id, partner_name:r.partner_name, offer_id:r.offer_id, offer_name:r.offer_name, registrations:0, ftd:0, ggr:0, spend:null};
+      rowsMap[key].registrations += r.registrations||0;
+      rowsMap[key].ftd += r.ftd||0;
+      rowsMap[key].ggr += r.ggr||0;
+      if(r.spend!=null){ rowsMap[key].spend = (rowsMap[key].spend||0) + r.spend; }
+    });
+  });
+  const rows = Object.values(rowsMap).map(r=>({
+    ...r, ggr: round2(r.ggr), ngr: round2(r.ggr*0.6),
+    cr_ftd: r.registrations ? round2(r.ftd/r.registrations*100) : 0,
+    cpa_ftd: (r.spend!=null && r.ftd) ? round2(r.spend/r.ftd) : null,
+  })).sort((a,b)=>b.registrations-a.registrations);
+  return { registrations:reg, ftd, ggr:round2(ggr), ngr:round2(ggr*0.6), spend: spendKnown?round2(spend):null, rows };
+}
+
+function monthSnapshot(bucketIndex){
+  const buckets = monthBuckets();
+  const weekKeys = buckets[bucketIndex];
+  if(!weekKeys) return null;
+  const result = {};
+  Object.keys(GROUP_META).forEach(g=>{ result[g] = sumGroupSnapshots(weekKeys, g); });
+  result._period = { from: WEEKS[weekKeys[weekKeys.length-1]]._period.from, to: WEEKS[weekKeys[0]]._period.to };
+  return result;
+}
+
+function getSnapshot(key){
+  if(key === null || key === undefined) return null;
+  return state.periodType === 'week' ? WEEKS[key] : monthSnapshot(parseInt(key, 10));
+}
+
+function availableKeys(){
+  if(state.periodType === 'week') return weekKeysSorted();
+  return monthBuckets().map((_,i)=>String(i));
+}
+
 function periodLabel(key, index){
   if(state.periodType === 'week'){
-    const names = ['Эта неделя','Прошлая неделя','2 недели назад','3 недели назад'];
+    const names = ['Эта неделя','Прошлая неделя','2 недели назад','3 недели назад','4 недели назад','5 недель назад','6 недель назад','7 недель назад'];
     const snap = WEEKS[key];
     const range = snap && snap._period ? `${fmtDateShort(snap._period.from)}–${fmtDateShort(snap._period.to)}` : key;
     return `${names[index] || key} (${range})`;
   } else {
-    const names = ['Этот месяц','Прошлый месяц'];
-    const [y,m] = key.split('-');
-    const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-    return `${names[index] || key} — ${monthNames[parseInt(m,10)-1]} ${y}`;
+    const names = ['Этот месяц (последние 4 недели)','Прошлый месяц (недели 5–8 назад)'];
+    const snap = monthSnapshot(index);
+    const range = snap && snap._period ? `${fmtDateShort(snap._period.from)}–${fmtDateShort(snap._period.to)}` : '';
+    return `${names[index] || key} (${range})`;
   }
 }
 
@@ -289,16 +342,14 @@ async function loadData(showSpinner){
   const btn = document.getElementById('refreshBtn');
   if(showSpinner) btn.classList.add('spinning');
   try{
-    const [latestRes, weeksRes, monthRes, historyRes] = await Promise.all([
+    const [latestRes, weeksRes, historyRes] = await Promise.all([
       fetch('./data/latest.json', {cache:'no-store'}),
       fetch('./data/weeks.json', {cache:'no-store'}),
-      fetch('./data/month.json', {cache:'no-store'}),
       fetch('./data/history.json', {cache:'no-store'}),
     ]);
     if(!latestRes.ok) throw new Error('latest.json недоступен (' + latestRes.status + ')');
     LATEST = await latestRes.json();
     WEEKS = weeksRes.ok ? await weeksRes.json() : {};
-    MONTHS = monthRes.ok ? await monthRes.json() : {};
     HISTORY = historyRes.ok ? await historyRes.json() : {};
 
     const generated = new Date(LATEST.generated_at);
@@ -335,6 +386,10 @@ function renderPeriodValueSelect(){
   const sel = document.getElementById('periodValue');
   const keys = availableKeys();
   if(!keys.includes(state.selectedKey)) state.selectedKey = keys[0];
+  if(!keys.length){
+    sel.innerHTML = `<option>нет данных</option>`;
+    return;
+  }
   sel.innerHTML = keys.map((k,i)=>`<option value="${k}" ${k===state.selectedKey?'selected':''}>${periodLabel(k,i)}</option>`).join('');
 }
 
@@ -351,11 +406,10 @@ function renderTabs(){
 }
 
 function renderKPIs(){
-  const store = periodStore();
   const keys = availableKeys();
   const idx = keys.indexOf(state.selectedKey);
-  const curSnap = store[state.selectedKey];
-  const prevSnap = idx >= 0 && idx+1 < keys.length ? store[keys[idx+1]] : null;
+  const curSnap = getSnapshot(state.selectedKey);
+  const prevSnap = idx >= 0 && idx+1 < keys.length ? getSnapshot(keys[idx+1]) : null;
 
   const cur = computeDerived(curSnap ? curSnap[state.group] : null);
   const prev = prevSnap ? computeDerived(prevSnap[state.group]) : null;
@@ -470,8 +524,7 @@ function renderInsights(){
 
 function renderTable(){
   const meta = GROUP_META[state.group];
-  const store = periodStore();
-  const snap = store[state.selectedKey];
+  const snap = getSnapshot(state.selectedKey);
   const rows = (snap && snap[state.group] && snap[state.group].rows) || [];
 
   document.getElementById('tableTitle').textContent = meta.title;
