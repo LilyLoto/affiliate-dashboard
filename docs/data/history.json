@@ -27,6 +27,13 @@
       "ftd": 245,
       "ggr": 10508.12,
       "spend": 0.0
+    },
+    {
+      "date": "2026-07-25",
+      "registrations": 898,
+      "ftd": 299,
+      "ggr": 13609.69,
+      "spend": 0.0
     }
   ],
   "seo": [
@@ -56,6 +63,13 @@
       "registrations": 59,
       "ftd": 43,
       "ggr": 38110.81,
+      "spend": 0.0
+    },
+    {
+      "date": "2026-07-25",
+      "registrations": 71,
+      "ftd": 47,
+      "ggr": 46557.58,
       "spend": 0.0
     }
   ],
@@ -87,6 +101,13 @@
       "ftd": 46,
       "ggr": 1846.51,
       "spend": 0.0
+    },
+    {
+      "date": "2026-07-25",
+      "registrations": 217,
+      "ftd": 56,
+      "ggr": 2106.15,
+      "spend": 0.0
     }
   ],
   "cc": [
@@ -117,6 +138,13 @@
       "ftd": 3,
       "ggr": 56.6,
       "spend": 0.0
+    },
+    {
+      "date": "2026-07-25",
+      "registrations": 5,
+      "ftd": 3,
+      "ggr": 103.88,
+      "spend": 0.0
     }
   ],
   "inactive": [
@@ -146,6 +174,13 @@
       "registrations": 11,
       "ftd": 10,
       "ggr": 1456.49,
+      "spend": 0.0
+    },
+    {
+      "date": "2026-07-25",
+      "registrations": 12,
+      "ftd": 12,
+      "ggr": 2192.25,
       "spend": 0.0
     }
   ]
