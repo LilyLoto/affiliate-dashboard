@@ -1,0 +1,47 @@
+{
+  "partners": [
+    {
+      "date": "2026-07-27",
+      "registrations": 83,
+      "ftd": 40,
+      "ggr": 4757.92,
+      "spend": 0.0
+    }
+  ],
+  "seo": [
+    {
+      "date": "2026-07-27",
+      "registrations": 3,
+      "ftd": 2,
+      "ggr": 2058.46,
+      "spend": 0.0
+    }
+  ],
+  "inhouse": [
+    {
+      "date": "2026-07-27",
+      "registrations": 14,
+      "ftd": 6,
+      "ggr": -75.72,
+      "spend": 0.0
+    }
+  ],
+  "cc": [
+    {
+      "date": "2026-07-27",
+      "registrations": 1,
+      "ftd": 1,
+      "ggr": 1.85,
+      "spend": 0.0
+    }
+  ],
+  "inactive": [
+    {
+      "date": "2026-07-27",
+      "registrations": 0,
+      "ftd": 1,
+      "ggr": -93.98,
+      "spend": 0.0
+    }
+  ]
+}
