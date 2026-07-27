@@ -440,8 +440,10 @@ def build_rows_list(metric_rows, spend_rows, spend_matched, partner_names, group
     return result
 
 
-WEEKS_TO_KEEP = 8  # "месяц" на фронтенде считается как сумма 4 недель — этот запас нужен,
-                    # чтобы для "прошлого месяца" тоже было 4 недели-предшественницы
+WEEKS_TO_KEEP = 12  # цель хранения — но набирается постепенно, см. ниже
+INITIAL_BURST_WEEKS = 4  # эти 4 недели (текущая + 3 прошлые) можно посчитать сразу одним прогоном
+MAX_NEW_HISTORICAL_WEEKS_PER_RUN = 1  # а вот сверх этих 4 — добираем не больше 1 НОВОЙ недели за прогон,
+                                       # чтобы не повторить 11-часовой прогон при попытке достать все 12 разом
 
 
 def load_json_file(path):
@@ -486,16 +488,31 @@ def main():
     weeks_path = os.path.join(DATA_DIR, "weeks.json")
     weeks_cache = load_json_file(weeks_path)
 
-    # ---- НЕДЕЛИ: текущая всегда пересчитывается, прошлые — только если их ещё нет в кэше ----
+    # ---- НЕДЕЛИ: текущая всегда пересчитывается; из прошлых — досчитываем не больше
+    #      MAX_NEW_HISTORICAL_WEEKS_PER_RUN новых за один прогон, чтобы не пытаться
+    #      добрать все 12 недель разом (именно это привело к 11-часовому прогону раньше).
+    #      Кэш заполняется постепенно, по чуть-чуть, пока не наберёт полное окно.
     week_keys_wanted = []
+    new_historical_computed = 0
     for weeks_ago in range(WEEKS_TO_KEEP):
         date_from, date_to, week_id = week_bounds(weeks_ago)
         week_keys_wanted.append(week_id)
-        if weeks_ago == 0 or week_id not in weeks_cache:
-            label = "текущая" if weeks_ago == 0 else "первый расчёт, дальше — из кэша"
-            print(f"Считаем неделю {week_id} ({label})...")
+
+        if weeks_ago == 0:
+            print(f"Считаем неделю {week_id} (текущая)...")
             weeks_cache[week_id] = collect_period_snapshot(
                 date_from, date_to, partner_groups, overrides, override_partner_ids, spend_rows, partner_names)
+        elif week_id not in weeks_cache:
+            within_burst = weeks_ago < INITIAL_BURST_WEEKS
+            if within_burst or new_historical_computed < MAX_NEW_HISTORICAL_WEEKS_PER_RUN:
+                reason = "первичный набор недель" if within_burst else f"пополнение истории, {new_historical_computed + 1}/{MAX_NEW_HISTORICAL_WEEKS_PER_RUN} за этот прогон"
+                print(f"Считаем неделю {week_id} ({reason})...")
+                weeks_cache[week_id] = collect_period_snapshot(
+                    date_from, date_to, partner_groups, overrides, override_partner_ids, spend_rows, partner_names)
+                if not within_burst:
+                    new_historical_computed += 1
+            else:
+                print(f"Неделя {week_id} ещё не в кэше, но лимит новых недель за прогон исчерпан — добьём в следующий раз")
         else:
             print(f"Неделя {week_id} уже в кэше — пропускаем повторный запрос к Alanbase")
 
@@ -504,7 +521,7 @@ def main():
             del weeks_cache[key]
 
     save_json_file(weeks_path, weeks_cache)
-    print("Записан docs/data/weeks.json")
+    print(f"Записан docs/data/weeks.json ({len(weeks_cache)} из {WEEKS_TO_KEEP} недель в кэше)")
 
     # ---- history.json для графика — берём из уже посчитанной текущей недели, без доп. запросов ----
     current_week_id = week_keys_wanted[0]
