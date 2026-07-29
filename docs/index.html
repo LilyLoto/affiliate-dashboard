@@ -106,6 +106,9 @@
   .dot{width:8px; height:8px; border-radius:2px; display:inline-block;}
 
   .chart-wrap{padding:14px 16px 8px; height:220px; position:relative;}
+  .charts-row{display:flex; gap:16px; margin-bottom:20px; flex-wrap:wrap;}
+  .charts-row .panel{margin-bottom:0; min-width:280px;}
+  @media (max-width:900px){ .charts-row{flex-direction:column;} }
 
   .insights{display:flex; gap:0; flex-wrap:wrap;}
   .insight{flex:1; min-width:220px; display:flex; align-items:center; gap:12px; padding:16px; border-right:1px solid var(--line);}
@@ -174,23 +177,30 @@
 
   <div class="kpi-grid" id="kpiGrid"></div>
 
-  <div class="panel" id="chartPanel">
-    <div class="panel-head">
-      <h2 id="chartTitle">Динамика</h2>
-      <div class="legend">
-        <span><span class="dot" style="background:#1F6F5C"></span>Registrations</span>
-        <span><span class="dot" style="background:#A9791C"></span>FTD</span>
-        <span><span class="dot" style="background:#2A5FA5"></span>GGR (/100, $)</span>
+  <div class="charts-row">
+    <div class="panel" id="regFtdChartPanel" style="flex:1;">
+      <div class="panel-head">
+        <h2 id="regFtdChartTitle">Регистрации и FTD</h2>
+      </div>
+      <div class="chart-wrap" style="height:260px;">
+        <canvas id="regFtdChart" role="img" aria-label="Столбчатый график: Registrations и FTD за выбранный период по сравнению с предыдущим"></canvas>
       </div>
     </div>
-    <div class="chart-wrap">
-      <canvas id="historyChart" role="img" aria-label="Линейный график динамики Registrations, FTD и GGR по периодам"></canvas>
+    <div class="panel" id="spendGgrChartPanel" style="flex:1;">
+      <div class="panel-head">
+        <h2 id="spendGgrChartTitle">Spend и GGR</h2>
+      </div>
+      <div class="chart-wrap" style="height:260px; display:flex; gap:12px;">
+        <div style="flex:1; position:relative;"><canvas id="spendChart" role="img" aria-label="Столбчатый график Spend за выбранный период по сравнению с предыдущим"></canvas></div>
+        <div style="flex:1; position:relative;"><canvas id="ggrChart" role="img" aria-label="Столбчатый график GGR за выбранный период по сравнению с предыдущим"></canvas></div>
+      </div>
     </div>
   </div>
 
   <div class="panel">
     <div class="panel-head">
       <h2>Ключевые инсайты</h2>
+      <span style="font-size:11px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;">по дням сбора, не по выбранному периоду</span>
     </div>
     <div class="insights" id="insightsRow"></div>
   </div>
@@ -446,49 +456,80 @@ function renderKPIs(){
   });
 }
 
+let regFtdChartRef = null;
+let spendChartRef = null;
+let ggrChartRef = null;
+
+function shortPeriodLabel(key, index){
+  if(state.periodType === 'week'){
+    const names = ['Эта неделя','Прошлая неделя','2 нед. назад','3 нед. назад','4 нед. назад','5 нед. назад','6 нед. назад','7 нед. назад','8 нед. назад','9 нед. назад','10 нед. назад','11 нед. назад'];
+    return names[index] || key;
+  }
+  const names = ['Этот месяц','Прошлый месяц'];
+  return names[index] || key;
+}
+
+function barChartOptions(){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ position:'bottom', labels:{ font:{family:'Space Grotesk', size:11}, boxWidth:10 } } },
+    scales:{
+      y:{ beginAtZero:true, grid:{color:'#E2E5E0'}, ticks:{color:'#5C6B64', font:{family:'IBM Plex Mono', size:11}} },
+      x:{ grid:{display:false}, ticks:{color:'#5C6B64', font:{family:'IBM Plex Mono', size:11}} }
+    }
+  };
+}
+
 function renderChart(){
   const meta = GROUP_META[state.group];
-  const chartPanel = document.getElementById('chartPanel');
-  if(!meta.hasDashboard){ chartPanel.style.display = 'none'; return; }
-  chartPanel.style.display = '';
-  document.getElementById('chartTitle').textContent = 'Динамика — ' + meta.title;
+  const row = document.querySelector('.charts-row');
+  if(!meta.hasDashboard){ row.style.display = 'none'; return; }
+  row.style.display = '';
 
-  const hist = (HISTORY && HISTORY[state.group]) ? HISTORY[state.group] : [];
-  const labels = hist.map(h => h.date.slice(5).split('-').reverse().join('.'));
+  const keys = availableKeys();
+  const idx = keys.indexOf(state.selectedKey);
+  const curSnap = getSnapshot(state.selectedKey);
+  const prevSnap = idx >= 0 && idx+1 < keys.length ? getSnapshot(keys[idx+1]) : null;
+  const cur = curSnap ? curSnap[state.group] : {registrations:0,ftd:0,ggr:0,spend:null};
+  const prev = prevSnap ? prevSnap[state.group] : null;
 
-  const ctx = document.getElementById('historyChart');
-  if(chartRef) chartRef.destroy();
+  const curLabel = shortPeriodLabel(state.selectedKey, idx);
+  const prevLabel = prevSnap ? shortPeriodLabel(keys[idx+1], idx+1) : null;
 
-  if(hist.length < 2){
-    const wrap = ctx.parentElement;
-    let note = wrap.querySelector('.empty-note');
-    if(!note){ note = document.createElement('div'); note.className='empty-note'; wrap.appendChild(note); }
-    note.textContent = 'Пока накоплено меньше двух точек истории — график появится после нескольких запусков сборщика (раз в день).';
-    ctx.style.display = 'none';
-    return;
-  }
-  ctx.style.display='';
-  const existingNote = ctx.parentElement.querySelector('.empty-note');
-  if(existingNote) existingNote.remove();
+  document.getElementById('regFtdChartTitle').textContent = `Регистрации и FTD — ${meta.title}`;
+  document.getElementById('spendGgrChartTitle').textContent = `Spend и GGR — ${meta.title}`;
 
-  chartRef = new Chart(ctx, {
-    type:'line',
+  const datasetsFor = (curVal, prevVal) => {
+    const ds = [{ label:curLabel, data:[curVal], backgroundColor:'#1F6F5C', borderRadius:4, maxBarThickness:60 }];
+    if(prev) ds.push({ label:prevLabel, data:[prevVal], backgroundColor:'#B7C4BD', borderRadius:4, maxBarThickness:60 });
+    return ds;
+  };
+
+  if(regFtdChartRef) regFtdChartRef.destroy();
+  regFtdChartRef = new Chart(document.getElementById('regFtdChart'), {
+    type:'bar',
     data:{
-      labels,
+      labels:['Registrations','FTD'],
       datasets:[
-        { label:'Registrations', data:hist.map(h=>h.registrations), borderColor:'#1F6F5C', backgroundColor:'rgba(31,111,92,0.08)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
-        { label:'FTD', data:hist.map(h=>h.ftd), borderColor:'#A9791C', backgroundColor:'rgba(169,121,28,0.08)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
-        { label:'GGR (/100)', data:hist.map(h=>Math.round(h.ggr/100)), borderColor:'#2A5FA5', backgroundColor:'rgba(42,95,165,0.06)', fill:true, tension:0.3, pointRadius:3, borderWidth:2 },
+        { label:curLabel, data:[cur.registrations, cur.ftd], backgroundColor:'#1F6F5C', borderRadius:4, maxBarThickness:70 },
+        ...(prev ? [{ label:prevLabel, data:[prev.registrations, prev.ftd], backgroundColor:'#B7C4BD', borderRadius:4, maxBarThickness:70 }] : [])
       ]
     },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
-      scales:{
-        y:{ grid:{color:'#E2E5E0'}, ticks:{color:'#5C6B64', font:{family:'IBM Plex Mono', size:11}} },
-        x:{ grid:{display:false}, ticks:{color:'#5C6B64', font:{family:'IBM Plex Mono', size:11}} }
-      }
-    }
+    options: barChartOptions(),
+  });
+
+  if(spendChartRef) spendChartRef.destroy();
+  spendChartRef = new Chart(document.getElementById('spendChart'), {
+    type:'bar',
+    data:{ labels:['Spend'], datasets: datasetsFor(cur.spend||0, prev ? (prev.spend||0) : 0) },
+    options: { ...barChartOptions(), plugins:{...barChartOptions().plugins, title:{display:true,text:'Spend ($)',font:{family:'Space Grotesk',size:12,weight:'600'},color:'var(--ink-muted)'}} },
+  });
+
+  if(ggrChartRef) ggrChartRef.destroy();
+  ggrChartRef = new Chart(document.getElementById('ggrChart'), {
+    type:'bar',
+    data:{ labels:['GGR'], datasets: datasetsFor(cur.ggr||0, prev ? (prev.ggr||0) : 0) },
+    options: { ...barChartOptions(), plugins:{...barChartOptions().plugins, title:{display:true,text:'GGR ($)',font:{family:'Space Grotesk',size:12,weight:'600'},color:'var(--ink-muted)'}} },
   });
 }
 
