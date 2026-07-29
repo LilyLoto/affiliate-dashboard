@@ -16,9 +16,9 @@
     },
     {
       "date": "2026-07-29",
-      "registrations": 373,
-      "ftd": 157,
-      "ggr": 13927.05,
+      "registrations": 381,
+      "ftd": 164,
+      "ggr": 13017.06,
       "spend": 0.0
     }
   ],
@@ -39,9 +39,9 @@
     },
     {
       "date": "2026-07-29",
-      "registrations": 43,
+      "registrations": 44,
       "ftd": 23,
-      "ggr": 18000.87,
+      "ggr": 18411.42,
       "spend": 0.0
     }
   ],
@@ -62,9 +62,9 @@
     },
     {
       "date": "2026-07-29",
-      "registrations": 138,
+      "registrations": 144,
       "ftd": 40,
-      "ggr": 1118.19,
+      "ggr": 1050.09,
       "spend": 0.0
     }
   ],
@@ -87,7 +87,7 @@
       "date": "2026-07-29",
       "registrations": 2,
       "ftd": 3,
-      "ggr": 73.21,
+      "ggr": 74.28,
       "spend": 0.0
     }
   ],
@@ -110,7 +110,7 @@
       "date": "2026-07-29",
       "registrations": 0,
       "ftd": 7,
-      "ggr": 874.25,
+      "ggr": 906.99,
       "spend": 0.0
     }
   ]

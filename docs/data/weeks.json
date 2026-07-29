@@ -1,23 +1,23 @@
 {
   "2026-07-27": {
     "partners": {
-      "registrations": 373,
-      "ftd": 157,
-      "ggr": 13927.05,
+      "registrations": 381,
+      "ftd": 164,
+      "ggr": 13017.06,
       "spend": null,
-      "ngr": 8356.23,
+      "ngr": 7810.24,
       "rows": [
         {
           "partner_id": "46",
           "partner_name": "arabae666@gmail.com",
           "offer_id": null,
           "offer_name": null,
-          "registrations": 136,
-          "ftd": 58,
-          "ggr": 4815.6,
-          "ngr": 2889.36,
+          "registrations": 137,
+          "ftd": 61,
+          "ggr": 5057.7,
+          "ngr": 3034.62,
           "spend": null,
-          "cr_ftd": 42.65,
+          "cr_ftd": 44.53,
           "cpa_ftd": null
         },
         {
@@ -25,12 +25,12 @@
           "partner_name": "haxpartners@gmail.com",
           "offer_id": null,
           "offer_name": null,
-          "registrations": 100,
+          "registrations": 105,
           "ftd": 45,
-          "ggr": 726.71,
-          "ngr": 436.03,
+          "ggr": 760.42,
+          "ngr": 456.25,
           "spend": null,
-          "cr_ftd": 45.0,
+          "cr_ftd": 42.86,
           "cpa_ftd": null
         },
         {
@@ -38,12 +38,12 @@
           "partner_name": "analytics@tds.media",
           "offer_id": null,
           "offer_name": null,
-          "registrations": 67,
-          "ftd": 31,
-          "ggr": 8363.98,
-          "ngr": 5018.39,
+          "registrations": 69,
+          "ftd": 35,
+          "ggr": 7177.32,
+          "ngr": 4306.39,
           "spend": null,
-          "cr_ftd": 46.27,
+          "cr_ftd": 50.72,
           "cpa_ftd": null
         },
         {
@@ -79,8 +79,8 @@
           "offer_name": null,
           "registrations": 1,
           "ftd": 0,
-          "ggr": -5.25,
-          "ngr": -3.15,
+          "ggr": -4.38,
+          "ngr": -2.63,
           "spend": null,
           "cr_ftd": 0.0,
           "cpa_ftd": null
@@ -88,23 +88,23 @@
       ]
     },
     "seo": {
-      "registrations": 43,
+      "registrations": 44,
       "ftd": 23,
-      "ggr": 18000.87,
+      "ggr": 18411.42,
       "spend": null,
-      "ngr": 10800.52,
+      "ngr": 11046.85,
       "rows": [
         {
           "partner_id": "53",
           "partner_name": "lilo.zhukova@gmail.com",
           "offer_id": "2",
           "offer_name": "CEO",
-          "registrations": 25,
+          "registrations": 26,
           "ftd": 13,
-          "ggr": 1447.32,
-          "ngr": 868.39,
+          "ggr": 1550.76,
+          "ngr": 930.46,
           "spend": null,
-          "cr_ftd": 52.0,
+          "cr_ftd": 50.0,
           "cpa_ftd": null
         },
         {
@@ -114,8 +114,8 @@
           "offer_name": null,
           "registrations": 14,
           "ftd": 8,
-          "ggr": 16336.55,
-          "ngr": 9801.93,
+          "ggr": 16640.88,
+          "ngr": 9984.53,
           "spend": null,
           "cr_ftd": 57.14,
           "cpa_ftd": null
@@ -127,8 +127,8 @@
           "offer_name": "LotoWins розыгрыши",
           "registrations": 3,
           "ftd": 1,
-          "ggr": 11.51,
-          "ngr": 6.91,
+          "ggr": 11.78,
+          "ngr": 7.07,
           "spend": null,
           "cr_ftd": 33.33,
           "cpa_ftd": null
@@ -142,19 +142,6 @@
           "ftd": 0,
           "ggr": 0.0,
           "ngr": 0.0,
-          "spend": null,
-          "cr_ftd": 0.0,
-          "cpa_ftd": null
-        },
-        {
-          "partner_id": "53",
-          "partner_name": "lilo.zhukova@gmail.com",
-          "offer_id": "42",
-          "offer_name": "Social netwotks loto.sz",
-          "registrations": 0,
-          "ftd": 1,
-          "ggr": 73.76,
-          "ngr": 44.26,
           "spend": null,
           "cr_ftd": 0.0,
           "cpa_ftd": null
@@ -184,27 +171,40 @@
           "spend": null,
           "cr_ftd": 0.0,
           "cpa_ftd": null
+        },
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "42",
+          "offer_name": "Social netwotks loto.sz",
+          "registrations": 0,
+          "ftd": 1,
+          "ggr": 76.28,
+          "ngr": 45.77,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
         }
       ]
     },
     "inhouse": {
-      "registrations": 138,
+      "registrations": 144,
       "ftd": 40,
-      "ggr": 1118.19,
+      "ggr": 1050.09,
       "spend": null,
-      "ngr": 670.91,
+      "ngr": 630.05,
       "rows": [
         {
           "partner_id": "108",
           "partner_name": "matygullinalilia@yandex.ru",
           "offer_id": null,
           "offer_name": null,
-          "registrations": 104,
+          "registrations": 107,
           "ftd": 27,
-          "ggr": 569.08,
-          "ngr": 341.45,
+          "ggr": 502.56,
+          "ngr": 301.54,
           "spend": null,
-          "cr_ftd": 25.96,
+          "cr_ftd": 25.23,
           "cpa_ftd": null
         },
         {
@@ -214,8 +214,8 @@
           "offer_name": null,
           "registrations": 23,
           "ftd": 12,
-          "ggr": 288.73,
-          "ngr": 173.24,
+          "ggr": 287.15,
+          "ngr": 172.29,
           "spend": null,
           "cr_ftd": 52.17,
           "cpa_ftd": null
@@ -225,12 +225,12 @@
           "partner_name": "Лиля2 Сайты 18+",
           "offer_id": null,
           "offer_name": null,
-          "registrations": 11,
+          "registrations": 14,
           "ftd": 1,
           "ggr": 14.25,
           "ngr": 8.55,
           "spend": null,
-          "cr_ftd": 9.09,
+          "cr_ftd": 7.14,
           "cpa_ftd": null
         },
         {
@@ -251,9 +251,9 @@
     "cc": {
       "registrations": 2,
       "ftd": 3,
-      "ggr": 73.21,
+      "ggr": 74.28,
       "spend": null,
-      "ngr": 43.93,
+      "ngr": 44.57,
       "rows": [
         {
           "partner_id": "53",
@@ -262,8 +262,8 @@
           "offer_name": "Bet24 I Banner",
           "registrations": 1,
           "ftd": 2,
-          "ggr": 34.79,
-          "ngr": 20.87,
+          "ggr": 35.86,
+          "ngr": 21.52,
           "spend": null,
           "cr_ftd": 200.0,
           "cpa_ftd": null
@@ -299,10 +299,88 @@
     "inactive": {
       "registrations": 0,
       "ftd": 7,
-      "ggr": 874.25,
+      "ggr": 906.99,
       "spend": null,
-      "ngr": 524.55,
+      "ngr": 544.19,
       "rows": [
+        {
+          "partner_id": "51",
+          "partner_name": "bizdev@traffic.one",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 2,
+          "ggr": 19.93,
+          "ngr": 11.96,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "37",
+          "partner_name": "d.bataman@kadam.net",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 1,
+          "ggr": 123.44,
+          "ngr": 74.06,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "56",
+          "partner_name": "kab3@arabiidiog.pro",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 35.96,
+          "ngr": 21.58,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "47",
+          "partner_name": "vladmbuyer@gmail.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 92.88,
+          "ngr": 55.73,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "104",
+          "partner_name": "default@adera.agency",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 12.83,
+          "ngr": 7.7,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "103",
+          "partner_name": "korostelov.b@gmail.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 188.99,
+          "ngr": 113.39,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
         {
           "partner_id": "52",
           "partner_name": "mair1016@punkproof.com",
@@ -310,8 +388,21 @@
           "offer_name": null,
           "registrations": 0,
           "ftd": 0,
-          "ggr": 41.36,
-          "ngr": 24.82,
+          "ggr": 45.16,
+          "ngr": 27.1,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "91",
+          "partner_name": "d_zaharov@icloud.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 1,
+          "ggr": 40.98,
+          "ngr": 24.59,
           "spend": null,
           "cr_ftd": 0.0,
           "cpa_ftd": null
@@ -325,19 +416,6 @@
           "ftd": 2,
           "ggr": 1.71,
           "ngr": 1.03,
-          "spend": null,
-          "cr_ftd": 0.0,
-          "cpa_ftd": null
-        },
-        {
-          "partner_id": "47",
-          "partner_name": "vladmbuyer@gmail.com",
-          "offer_id": null,
-          "offer_name": null,
-          "registrations": 0,
-          "ftd": 0,
-          "ggr": 96.41,
-          "ngr": 57.85,
           "spend": null,
           "cr_ftd": 0.0,
           "cpa_ftd": null
@@ -369,71 +447,6 @@
           "cpa_ftd": null
         },
         {
-          "partner_id": "37",
-          "partner_name": "d.bataman@kadam.net",
-          "offer_id": null,
-          "offer_name": null,
-          "registrations": 0,
-          "ftd": 1,
-          "ggr": 119.45,
-          "ngr": 71.67,
-          "spend": null,
-          "cr_ftd": 0.0,
-          "cpa_ftd": null
-        },
-        {
-          "partner_id": "35",
-          "partner_name": "alekseevairina0077@gmail.com",
-          "offer_id": null,
-          "offer_name": null,
-          "registrations": 0,
-          "ftd": 1,
-          "ggr": 315.6,
-          "ngr": 189.36,
-          "spend": null,
-          "cr_ftd": 0.0,
-          "cpa_ftd": null
-        },
-        {
-          "partner_id": "56",
-          "partner_name": "kab3@arabiidiog.pro",
-          "offer_id": null,
-          "offer_name": null,
-          "registrations": 0,
-          "ftd": 0,
-          "ggr": 35.94,
-          "ngr": 21.56,
-          "spend": null,
-          "cr_ftd": 0.0,
-          "cpa_ftd": null
-        },
-        {
-          "partner_id": "103",
-          "partner_name": "korostelov.b@gmail.com",
-          "offer_id": null,
-          "offer_name": null,
-          "registrations": 0,
-          "ftd": 0,
-          "ggr": 180.85,
-          "ngr": 108.51,
-          "spend": null,
-          "cr_ftd": 0.0,
-          "cpa_ftd": null
-        },
-        {
-          "partner_id": "51",
-          "partner_name": "bizdev@traffic.one",
-          "offer_id": null,
-          "offer_name": null,
-          "registrations": 0,
-          "ftd": 2,
-          "ggr": 19.93,
-          "ngr": 11.96,
-          "spend": null,
-          "cr_ftd": 0.0,
-          "cpa_ftd": null
-        },
-        {
           "partner_id": "106",
           "partner_name": "plc.777@yandex.ru",
           "offer_id": null,
@@ -447,27 +460,14 @@
           "cpa_ftd": null
         },
         {
-          "partner_id": "91",
-          "partner_name": "d_zaharov@icloud.com",
+          "partner_id": "35",
+          "partner_name": "alekseevairina0077@gmail.com",
           "offer_id": null,
           "offer_name": null,
           "registrations": 0,
           "ftd": 1,
-          "ggr": 39.7,
-          "ngr": 23.82,
-          "spend": null,
-          "cr_ftd": 0.0,
-          "cpa_ftd": null
-        },
-        {
-          "partner_id": "104",
-          "partner_name": "default@adera.agency",
-          "offer_id": null,
-          "offer_name": null,
-          "registrations": 0,
-          "ftd": 0,
-          "ggr": 12.83,
-          "ngr": 7.7,
+          "ggr": 334.65,
+          "ngr": 200.79,
           "spend": null,
           "cr_ftd": 0.0,
           "cpa_ftd": null
@@ -3662,6 +3662,383 @@
     "_period": {
       "from": "2026-06-08 00:00",
       "to": "2026-06-14 23:59"
+    },
+    "_spend_matched": false
+  },
+  "2026-06-01": {
+    "partners": {
+      "registrations": 372,
+      "ftd": 176,
+      "ggr": 25342.56,
+      "spend": null,
+      "ngr": 15205.54,
+      "rows": [
+        {
+          "partner_id": "36",
+          "partner_name": "analytics@tds.media",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 191,
+          "ftd": 77,
+          "ggr": 14759.71,
+          "ngr": 8855.83,
+          "spend": null,
+          "cr_ftd": 40.31,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "46",
+          "partner_name": "arabae666@gmail.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 108,
+          "ftd": 57,
+          "ggr": 8792.55,
+          "ngr": 5275.53,
+          "spend": null,
+          "cr_ftd": 52.78,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "40",
+          "partner_name": "haxpartners@gmail.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 73,
+          "ftd": 42,
+          "ggr": 1743.38,
+          "ngr": 1046.03,
+          "spend": null,
+          "cr_ftd": 57.53,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "107",
+          "partner_name": "wraokn@gmail.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 46.91,
+          "ngr": 28.15,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        }
+      ]
+    },
+    "seo": {
+      "registrations": 110,
+      "ftd": 70,
+      "ggr": 79457.72,
+      "spend": null,
+      "ngr": 47674.63,
+      "rows": [
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "2",
+          "offer_name": "CEO",
+          "registrations": 67,
+          "ftd": 35,
+          "ggr": 4260.84,
+          "ngr": 2556.5,
+          "spend": null,
+          "cr_ftd": 52.24,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "2",
+          "partner_name": "seo@trafficpills.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 41,
+          "ftd": 32,
+          "ggr": 74944.75,
+          "ngr": 44966.85,
+          "spend": null,
+          "cr_ftd": 78.05,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "98",
+          "offer_name": "LotoWins розыгрыши",
+          "registrations": 2,
+          "ftd": 2,
+          "ggr": 55.03,
+          "ngr": 33.02,
+          "spend": null,
+          "cr_ftd": 100.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "79",
+          "offer_name": "Bonus Wheel",
+          "registrations": 0,
+          "ftd": 1,
+          "ggr": -12.1,
+          "ngr": -7.26,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "94",
+          "offer_name": "Bonus 3000 (временная)",
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 137.96,
+          "ngr": 82.78,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "42",
+          "offer_name": "Social netwotks loto.sz",
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 71.25,
+          "ngr": 42.75,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        }
+      ]
+    },
+    "inhouse": {
+      "registrations": 168,
+      "ftd": 53,
+      "ggr": 4540.39,
+      "spend": null,
+      "ngr": 2724.23,
+      "rows": [
+        {
+          "partner_id": "108",
+          "partner_name": "matygullinalilia@yandex.ru",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 168,
+          "ftd": 53,
+          "ggr": 4796.23,
+          "ngr": 2877.74,
+          "spend": null,
+          "cr_ftd": 31.55,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "113",
+          "offer_name": "CC Telegram LOTO",
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": -255.84,
+          "ngr": -153.5,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        }
+      ]
+    },
+    "cc": {
+      "registrations": 10,
+      "ftd": 1,
+      "ggr": 46.98,
+      "spend": null,
+      "ngr": 28.19,
+      "rows": [
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "91",
+          "offer_name": "Bet24 I Site",
+          "registrations": 6,
+          "ftd": 0,
+          "ggr": 15.19,
+          "ngr": 9.11,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "92",
+          "offer_name": "Bet24 I Banner",
+          "registrations": 4,
+          "ftd": 1,
+          "ggr": 17.05,
+          "ngr": 10.23,
+          "spend": null,
+          "cr_ftd": 25.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "53",
+          "partner_name": "lilo.zhukova@gmail.com",
+          "offer_id": "90",
+          "offer_name": "Bet24 I TG",
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 14.74,
+          "ngr": 8.84,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        }
+      ]
+    },
+    "inactive": {
+      "registrations": 0,
+      "ftd": 6,
+      "ggr": 6234.23,
+      "spend": null,
+      "ngr": 3740.54,
+      "rows": [
+        {
+          "partner_id": "37",
+          "partner_name": "d.bataman@kadam.net",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 401.13,
+          "ngr": 240.68,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "51",
+          "partner_name": "bizdev@traffic.one",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 6.89,
+          "ngr": 4.13,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "56",
+          "partner_name": "kab3@arabiidiog.pro",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 1,
+          "ggr": 34.05,
+          "ngr": 20.43,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "104",
+          "partner_name": "default@adera.agency",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 1,
+          "ggr": 22.06,
+          "ngr": 13.24,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "47",
+          "partner_name": "vladmbuyer@gmail.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 246.73,
+          "ngr": 148.04,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "103",
+          "partner_name": "korostelov.b@gmail.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 2,
+          "ggr": 1059.55,
+          "ngr": 635.73,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "52",
+          "partner_name": "mair1016@punkproof.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 14.39,
+          "ngr": 8.63,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "98",
+          "partner_name": "akiomiklc@gmail.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 9.87,
+          "ngr": 5.92,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "106",
+          "partner_name": "plc.777@yandex.ru",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 0,
+          "ggr": 16.97,
+          "ngr": 10.18,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        },
+        {
+          "partner_id": "35",
+          "partner_name": "alekseevairina0077@gmail.com",
+          "offer_id": null,
+          "offer_name": null,
+          "registrations": 0,
+          "ftd": 2,
+          "ggr": 4422.59,
+          "ngr": 2653.55,
+          "spend": null,
+          "cr_ftd": 0.0,
+          "cpa_ftd": null
+        }
+      ]
+    },
+    "_period": {
+      "from": "2026-06-01 00:00",
+      "to": "2026-06-07 23:59"
     },
     "_spend_matched": false
   }
