@@ -2,7 +2,7 @@
 Собирает статистику из Alanbase API + Google Sheets, считает метрики
 по группам (partners/seo/inhouse/cc/inactive) — как по сумме группы,
 так и в разбивке по каждому партнёру (и по офферам для составных
-партнёров) — и сохраняет docs/data/latest.json + docs/data/history.json.
+партнёров) — и сохраняет docs/data/latest.json.
 
 ВАЖНО про Alanbase API:
   /admin/statistic/common      — готовая сводка, но НЕ умеет фильтровать
@@ -65,7 +65,6 @@ GROUP_ALIASES = {
 }
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "data")
-HISTORY_MAX_POINTS = 60
 
 PER_PAGE = 1000
 SLEEP_BETWEEN_REQUESTS = 2.2  # секунды; держит нас в пределах 30 запросов/мин с запасом
@@ -369,9 +368,14 @@ def spend_for_period(spend_rows, date_from, date_to, partner_groups, overrides, 
 
 
 def week_bounds(weeks_ago=0):
-    today = datetime.date.today()
-    monday = today - datetime.timedelta(days=today.weekday() + 7 * weeks_ago)
-    end = monday + datetime.timedelta(days=6) if weeks_ago > 0 else today
+    # Сборщик теперь запускается раз в неделю, по понедельникам утром.
+    # Если считать недели от "сегодня", "текущая неделя" в момент запуска
+    # была бы почти пустой (только начавшийся понедельник). Поэтому точка
+    # отсчёта — "вчера": в понедельник утром это воскресенье, то есть
+    # только что полностью закончившаяся неделя пн-вс, а не текущий день.
+    reference = datetime.date.today() - datetime.timedelta(days=1)
+    monday = reference - datetime.timedelta(days=reference.weekday() + 7 * weeks_ago)
+    end = monday + datetime.timedelta(days=6) if weeks_ago > 0 else reference
     return monday.strftime("%Y-%m-%d 00:00"), end.strftime("%Y-%m-%d 23:59"), monday.isoformat()
 
 
@@ -522,27 +526,6 @@ def main():
 
     save_json_file(weeks_path, weeks_cache)
     print(f"Записан docs/data/weeks.json ({len(weeks_cache)} из {WEEKS_TO_KEEP} недель в кэше)")
-
-    # ---- history.json для графика — берём из уже посчитанной текущей недели, без доп. запросов ----
-    current_week_id = week_keys_wanted[0]
-    current_week_snapshot = weeks_cache[current_week_id]
-
-    history_path = os.path.join(DATA_DIR, "history.json")
-    history = load_json_file(history_path)
-    today_str = datetime.date.today().isoformat()
-    for g in GROUPS:
-        history.setdefault(g, [])
-        points = [p for p in history[g] if p["date"] != today_str]
-        points.append({
-            "date": today_str,
-            "registrations": current_week_snapshot[g]["registrations"],
-            "ftd": current_week_snapshot[g]["ftd"],
-            "ggr": current_week_snapshot[g]["ggr"],
-            "spend": current_week_snapshot[g]["spend"] if current_week_snapshot[g]["spend"] is not None else 0.0,
-        })
-        history[g] = points[-HISTORY_MAX_POINTS:]
-    save_json_file(history_path, history)
-    print("Записан docs/data/history.json")
 
     # ---- latest.json — только метаданные: что доступно и когда обновлялось ----
     latest = {
