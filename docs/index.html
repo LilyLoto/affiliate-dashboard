@@ -199,14 +199,6 @@
 
   <div class="panel">
     <div class="panel-head">
-      <h2>Ключевые инсайты</h2>
-      <span style="font-size:11px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;">по дням сбора, не по выбранному периоду</span>
-    </div>
-    <div class="insights" id="insightsRow"></div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-head">
       <h2 id="tableTitle">Партнёры</h2>
       <span id="tableHint" style="font-size:11px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;"></span>
     </div>
@@ -223,7 +215,7 @@
 /* ---------------------------------------------------------------
    ЖИВЫЕ ДАННЫЕ
    Читаем ./data/latest.json (снимок недели по группам + список строк
-   по партнёрам/офферам) и ./data/history.json (накопленная история).
+   по партнёрам/офферам). Обновляет scripts/collect.py по расписанию GitHub Actions.
    Оба файла обновляет scripts/collect.py по расписанию GitHub Actions.
 ------------------------------------------------------------------*/
 
@@ -250,7 +242,6 @@ const GROUP_META = {
 
 let WEEKS = null;
 let LATEST = null;
-let HISTORY = null;
 let state = { periodType:'week', selectedKey:null, group:'partners' };
 let chartRef = null;
 
@@ -352,15 +343,13 @@ async function loadData(showSpinner){
   const btn = document.getElementById('refreshBtn');
   if(showSpinner) btn.classList.add('spinning');
   try{
-    const [latestRes, weeksRes, historyRes] = await Promise.all([
+    const [latestRes, weeksRes] = await Promise.all([
       fetch('./data/latest.json', {cache:'no-store'}),
       fetch('./data/weeks.json', {cache:'no-store'}),
-      fetch('./data/history.json', {cache:'no-store'}),
     ]);
     if(!latestRes.ok) throw new Error('latest.json недоступен (' + latestRes.status + ')');
     LATEST = await latestRes.json();
     WEEKS = weeksRes.ok ? await weeksRes.json() : {};
-    HISTORY = historyRes.ok ? await historyRes.json() : {};
 
     const generated = new Date(LATEST.generated_at);
     document.getElementById('updatedAt').textContent = generated.toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
@@ -533,36 +522,6 @@ function renderChart(){
   });
 }
 
-function renderInsights(){
-  const row = document.getElementById('insightsRow');
-  const hist = (HISTORY && HISTORY[state.group]) ? HISTORY[state.group] : [];
-  if(hist.length < 2){
-    row.innerHTML = `<div class="insights-empty">Инсайты появятся, когда накопится история минимум за 2 запуска сборщика.</div>`;
-    return;
-  }
-  const maxReg = hist.reduce((a,b)=> b.registrations > a.registrations ? b : a);
-  const maxFtd = hist.reduce((a,b)=> b.ftd > a.ftd ? b : a);
-  const first = hist[0], last = hist[hist.length-1];
-  const ggrGrowth = first.ggr ? ((last.ggr-first.ggr)/first.ggr*100) : (last.ggr>0?100:0);
-
-  const fmtDate = d => d.slice(5).split('-').reverse().join('.');
-
-  row.innerHTML = `
-    <div class="insight">
-      <div class="insight-icon" style="background:var(--accent-soft); color:var(--accent);">${svgIcon('people')}</div>
-      <div><p class="insight-label">Максимум регистраций</p><p class="insight-value">${fmtDate(maxReg.date)} (${fmtInt(maxReg.registrations)})</p></div>
-    </div>
-    <div class="insight">
-      <div class="insight-icon" style="background:var(--amber-soft); color:var(--amber);">${svgIcon('star')}</div>
-      <div><p class="insight-label">Пик FTD</p><p class="insight-value">${fmtDate(maxFtd.date)} (${fmtInt(maxFtd.ftd)})</p></div>
-    </div>
-    <div class="insight">
-      <div class="insight-icon" style="background:${ggrGrowth>=0?'var(--accent-soft)':'var(--danger-soft)'}; color:${ggrGrowth>=0?'var(--accent)':'var(--danger)'};">${svgIcon(ggrGrowth>=0?'trendUp':'trendDown')}</div>
-      <div><p class="insight-label">Рост GGR</p><p class="insight-value">${ggrGrowth>=0?'+':''}${ggrGrowth.toFixed(1)}% за период</p></div>
-    </div>
-  `;
-}
-
 function renderTable(){
   const meta = GROUP_META[state.group];
   const snap = getSnapshot(state.selectedKey);
@@ -606,7 +565,6 @@ function render(){
   renderTabs();
   renderKPIs();
   renderChart();
-  renderInsights();
   renderTable();
 }
 
