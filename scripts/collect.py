@@ -445,6 +445,9 @@ def build_rows_list(metric_rows, spend_rows, spend_matched, partner_names, group
 
 
 WEEKS_TO_KEEP = 12  # цель хранения — но набирается постепенно, см. ниже
+ALWAYS_RECOMPUTE_WEEKS = 2  # текущая (0) и только что закрытая (1) — пересчитываются каждый раз.
+                             # Это даёт "закрытой" неделе один запасной прогон на случай, если
+                             # Spend в таблице дозаполнили после того, как неделя уже была посчитана.
 INITIAL_BURST_WEEKS = 4  # эти 4 недели (текущая + 3 прошлые) можно посчитать сразу одним прогоном
 MAX_NEW_HISTORICAL_WEEKS_PER_RUN = 1  # а вот сверх этих 4 — добираем не больше 1 НОВОЙ недели за прогон,
                                        # чтобы не повторить 11-часовой прогон при попытке достать все 12 разом
@@ -502,8 +505,9 @@ def main():
         date_from, date_to, week_id = week_bounds(weeks_ago)
         week_keys_wanted.append(week_id)
 
-        if weeks_ago == 0:
-            print(f"Считаем неделю {week_id} (текущая)...")
+        if weeks_ago < ALWAYS_RECOMPUTE_WEEKS:
+            label = "текущая" if weeks_ago == 0 else "только что закрытая, пересчитываем ещё раз на случай позднего Spend"
+            print(f"Считаем неделю {week_id} ({label})...")
             weeks_cache[week_id] = collect_period_snapshot(
                 date_from, date_to, partner_groups, overrides, override_partner_ids, spend_rows, partner_names)
         elif week_id not in weeks_cache:
